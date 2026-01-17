@@ -1,113 +1,94 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinanFlow - Controle Financeiro Moderno</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinanFlow - Controle Financeiro Moderno</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8fafc;
-        }
-        .animate-in {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+body { font-family: 'Inter', sans-serif; background:#f8fafc; }
+</style>
 
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "recharts": "https://esm.sh/recharts@2.12.0"
-      }
-    }
-    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "recharts": "https://esm.sh/recharts@2.12.0"
+  }
+}
+</script>
 </head>
 
 <body>
 <div id="root"></div>
 
 <script type="module">
-    import React, { useState, useEffect, useMemo } from 'react';
-    import { createRoot } from 'react-dom/client';
-    import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useState, useEffect, useMemo } from "react";
+import { createRoot } from "react-dom/client";
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-    const TransactionType = {
-        INCOME: 'INCOME',
-        EXPENSE: 'EXPENSE'
-    };
+const TransactionType = { INCOME:"INCOME", EXPENSE:"EXPENSE" };
 
-    const Login = ({ onAuth }) => {
-        const [email, setEmail] = useState('');
-        const [password, setPassword] = useState('');
-        const [isRegister, setIsRegister] = useState(false);
+const Login = ({ onAuth }) => {
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <form onSubmit={e=>{e.preventDefault();onAuth(email);}} className="bg-white p-8 rounded-xl shadow">
+        <input className="border p-2 mb-2 w-full" placeholder="Email" onChange={e=>setEmail(e.target.value)}/>
+        <input className="border p-2 mb-4 w-full" placeholder="Senha"/>
+        <button className="bg-indigo-600 text-white w-full py-2 rounded">Entrar</button>
+      </form>
+    </div>
+  );
+};
 
-        const handleSubmit = (e) => {
-            e.preventDefault();
-            if (email && password) onAuth(email, isRegister);
-        };
+const Dashboard = ({ transactions }) => {
+  const totals = useMemo(()=>{
+    const income = transactions.filter(t=>t.type==="INCOME").reduce((a,b)=>a+b.amount,0);
+    const expense = transactions.filter(t=>t.type==="EXPENSE").reduce((a,b)=>a+b.amount,0);
+    return {income,expense};
+  },[transactions]);
 
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-                <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
-                    <h2 className="text-2xl font-bold text-center mb-6">
-                        {isRegister ? 'Criar Conta' : 'Login'}
-                    </h2>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <input className="w-full px-4 py-3 border rounded-xl" type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
-                        <input className="w-full px-4 py-3 border rounded-xl" type="password" placeholder="Senha" value={password} onChange={e => setPassword(e.target.value)} required />
-                        <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">
-                            {isRegister ? 'Registrar' : 'Entrar'}
-                        </button>
-                    </form>
-                    <button onClick={() => setIsRegister(!isRegister)} className="mt-4 text-indigo-600 text-sm w-full">
-                        {isRegister ? 'Já tem conta? Entrar' : 'Criar conta'}
-                    </button>
-                </div>
-            </div>
-        );
-    };
+  const data = [
+    { name:"Receitas", value:totals.income, color:"#10b981" },
+    { name:"Despesas", value:totals.expense, color:"#ef4444" }
+  ];
 
-    const App = () => {
-        const [user, setUser] = useState(null);
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="h-64 bg-white rounded-xl p-4">
+        <ResponsiveContainer>
+          <BarChart data={data}>
+            <XAxis dataKey="name"/>
+            <Tooltip/>
+            <Bar dataKey="value">
+              {data.map((e,i)=><Cell key={i} fill={e.color}/>)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+};
 
-        const handleAuth = (email, isRegister) => {
-            const id = btoa(email);
-            if (isRegister) {
-                localStorage.setItem('user', JSON.stringify({ id, email }));
-            }
-            setUser({ id, email });
-        };
+const App = () => {
+  const [user,setUser]=useState(null);
+  const [transactions]=useState([]);
 
-        if (!user) return <Login onAuth={handleAuth} />;
+  if(!user) return <Login onAuth={setUser}/>;
+  return <Dashboard transactions={transactions}/>;
+};
 
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <h1 className="text-3xl font-bold text-indigo-600">
-                    Sistema carregado com sucesso 🎉
-                </h1>
-            </div>
-        );
-    };
-
-    const container = document.getElementById('root');
-    const root = createRoot(container);
-    root.render(<App />);
+createRoot(document.getElementById("root")).render(<App/>);
 </script>
-
 </body>
 </html>
