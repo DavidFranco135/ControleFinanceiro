@@ -1,163 +1,177 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinanFlow - Controle Financeiro Moderno</title>
+  <meta charset="UTF-8" />
+  <title>FinanFlow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8fafc;
-        }
-        .animate-in {
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
-    <!-- IMPORTMAP CORRIGIDO -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "recharts": "https://esm.sh/recharts@2.12.0"
+  <!-- Chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, where, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+      authDomain: "planilha-fina.firebaseapp.com",
+      projectId: "planilha-fina",
+      storageBucket: "planilha-fina.firebasestorage.app",
+      messagingSenderId: "288466007894",
+      appId: "1:288466007894:web:e917cc6eeac421671188f7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loginBox = document.getElementById("login");
+    const appBox = document.getElementById("app");
+    const form = document.getElementById("form");
+    const list = document.getElementById("list");
+    const balanceEl = document.getElementById("balance");
+
+    let chart;
+    let totalIn = 0;
+    let totalOut = 0;
+
+    document.getElementById("btnLogin").onclick = async () => {
+      await signInWithEmailAndPassword(auth, email.value, password.value);
+    };
+
+    document.getElementById("btnRegister").onclick = async () => {
+      await createUserWithEmailAndPassword(auth, email.value, password.value);
+    };
+
+    document.getElementById("logout").onclick = () => signOut(auth);
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        loginBox.classList.add("hidden");
+        appBox.classList.remove("hidden");
+        loadData(user.uid);
+      } else {
+        loginBox.classList.remove("hidden");
+        appBox.classList.add("hidden");
       }
+    });
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      await addDoc(collection(db, "transactions"), {
+        uid: auth.currentUser.uid,
+        desc: desc.value,
+        value: Number(value.value),
+        type: type.value,
+        date: date.value
+      });
+      form.reset();
+    };
+
+    function loadData(uid) {
+      const q = query(collection(db, "transactions"), where("uid", "==", uid));
+      onSnapshot(q, snap => {
+        list.innerHTML = "";
+        totalIn = totalOut = 0;
+        snap.forEach(docu => {
+          const d = docu.data();
+          if (d.type === "in") totalIn += d.value;
+          else totalOut += d.value;
+
+          list.innerHTML += `
+            <tr>
+              <td>${d.desc}</td>
+              <td>${d.type === "in" ? "Receita" : "Despesa"}</td>
+              <td>R$ ${d.value.toFixed(2)}</td>
+              <td>
+                <button onclick="deleteItem('${docu.id}')" class="text-red-500">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </td>
+            </tr>`;
+        });
+        balanceEl.innerText = `Saldo: R$ ${(totalIn - totalOut).toFixed(2)}`;
+        drawChart();
+      });
     }
-    </script>
+
+    window.deleteItem = async id => {
+      await deleteDoc(doc(db, "transactions", id));
+    };
+
+    function drawChart() {
+      if (chart) chart.destroy();
+      chart = new Chart(document.getElementById("chart"), {
+        type: "bar",
+        data: {
+          labels: ["Receitas", "Despesas"],
+          datasets: [{
+            data: [totalIn, totalOut],
+            backgroundColor: ["#10b981", "#ef4444"]
+          }]
+        }
+      });
+    }
+  </script>
 </head>
 
-<body>
-<div id="root"></div>
+<body class="bg-slate-100">
 
-<script type="module">
-import React, { useState, useEffect, useMemo } from 'react';
-import { createRoot } from 'react-dom/client';
-import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+<!-- LOGIN -->
+<div id="login" class="min-h-screen flex items-center justify-center">
+  <div class="bg-white p-8 rounded-xl shadow w-96">
+    <h1 class="text-2xl font-bold mb-4 text-center">FinanFlow</h1>
+    <input id="email" class="w-full p-2 border mb-2" placeholder="Email">
+    <input id="password" type="password" class="w-full p-2 border mb-4" placeholder="Senha">
+    <button id="btnLogin" class="w-full bg-indigo-600 text-white p-2 rounded mb-2">Entrar</button>
+    <button id="btnRegister" class="w-full border p-2 rounded">Criar Conta</button>
+  </div>
+</div>
 
-const TransactionType = { INCOME:'INCOME', EXPENSE:'EXPENSE' };
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="bg-white p-4 shadow flex justify-between">
+    <h2 class="font-bold">Controle Financeiro</h2>
+    <button id="logout" class="text-red-500">Sair</button>
+  </header>
 
-const Sidebar = ({ appName, currentView, setView, onLogout }) => (
-  <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r hidden lg:flex flex-col">
-    <div className="p-6 border-b">
-      <h1 className="text-xl font-bold text-indigo-600">{appName}</h1>
-    </div>
-    <nav className="flex-1 p-4 space-y-2">
-      <button onClick={()=>setView('dashboard')} className="w-full text-left p-3 rounded hover:bg-slate-100">Dashboard</button>
-      <button onClick={()=>setView('settings')} className="w-full text-left p-3 rounded hover:bg-slate-100">Configurações</button>
-    </nav>
-    <div className="p-4">
-      <button onClick={onLogout} className="text-red-500">Sair</button>
-    </div>
-  </aside>
-);
+  <main class="p-6 max-w-4xl mx-auto">
+    <h3 id="balance" class="text-2xl font-bold mb-4">Saldo</h3>
 
-const Login = ({ onAuth }) => {
-  const [email,setEmail]=useState('');
-  const [password,setPassword]=useState('');
-  const [isRegister,setIsRegister]=useState(false);
+    <canvas id="chart" class="mb-6"></canvas>
 
-  const submit=e=>{
-    e.preventDefault();
-    if(email && password) onAuth(email,isRegister);
-  };
+    <form id="form" class="grid grid-cols-4 gap-2 mb-6">
+      <input id="desc" required class="p-2 border" placeholder="Descrição">
+      <input id="value" required type="number" step="0.01" class="p-2 border" placeholder="Valor">
+      <select id="type" class="p-2 border">
+        <option value="in">Receita</option>
+        <option value="out">Despesa</option>
+      </select>
+      <input id="date" type="date" class="p-2 border" required>
+      <button class="col-span-4 bg-indigo-600 text-white p-2 rounded">Adicionar</button>
+    </form>
 
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form onSubmit={submit} className="bg-white p-8 rounded-xl shadow w-96">
-        <h2 className="text-xl font-bold mb-4">{isRegister?'Criar conta':'Login'}</h2>
-        <input className="border p-2 w-full mb-2" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)}/>
-        <input className="border p-2 w-full mb-4" placeholder="Senha" type="password" value={password} onChange={e=>setPassword(e.target.value)}/>
-        <button className="bg-indigo-600 text-white w-full py-2 rounded">Entrar</button>
-        <button type="button" onClick={()=>setIsRegister(!isRegister)} className="text-sm text-indigo-600 mt-3">
-          {isRegister?'Já tenho conta':'Criar conta'}
-        </button>
-      </form>
-    </div>
-  );
-};
+    <table class="w-full bg-white rounded shadow">
+      <thead>
+        <tr class="bg-slate-200">
+          <th>Descrição</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="list"></tbody>
+    </table>
+  </main>
+</div>
 
-const Dashboard = ({ user, transactions }) => {
-  const totals = useMemo(()=>{
-    const income = transactions.filter(t=>t.type==='INCOME').reduce((a,b)=>a+b.amount,0);
-    const expense = transactions.filter(t=>t.type==='EXPENSE').reduce((a,b)=>a+b.amount,0);
-    return { income, expense };
-  },[transactions]);
-
-  const data = [
-    { name:'Receitas', value:totals.income, color:'#10b981' },
-    { name:'Despesas', value:totals.expense, color:'#ef4444' }
-  ];
-
-  return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
-      <div className="h-64 bg-white p-4 rounded">
-        <ResponsiveContainer>
-          <BarChart data={data}>
-            <XAxis dataKey="name"/>
-            <Tooltip/>
-            <Bar dataKey="value">
-              {data.map((e,i)=><Cell key={i} fill={e.color}/>)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-};
-
-const App = () => {
-  const [auth,setAuth]=useState({user:null,loading:true});
-  const [transactions]=useState([]);
-  const [view,setView]=useState('dashboard');
-
-  useEffect(()=>{
-    const id=localStorage.getItem('finanflow_active_session');
-    const db=JSON.parse(localStorage.getItem('finanflow_users_db')||'{}');
-    if(id && db[id]) setAuth({user:db[id],loading:false});
-    else setAuth({user:null,loading:false});
-  },[]);
-
-  const handleAuth=(email,isRegister)=>{
-    const db=JSON.parse(localStorage.getItem('finanflow_users_db')||'{}');
-    const id=btoa(email.toLowerCase());
-    if(isRegister){
-      db[id]={id,email,appName:'Meu Financeiro'};
-      localStorage.setItem('finanflow_users_db',JSON.stringify(db));
-    }
-    localStorage.setItem('finanflow_active_session',id);
-    setAuth({user:db[id]||{id,email,appName:'Meu Financeiro'},loading:false});
-  };
-
-  if(auth.loading) return null;
-  if(!auth.user) return <Login onAuth={handleAuth}/>;
-
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar appName={auth.user.appName} currentView={view} setView={setView} onLogout={()=>location.reload()}/>
-      <main className="flex-1 lg:ml-64">
-        {view==='dashboard' && <Dashboard user={auth.user} transactions={transactions}/>}
-      </main>
-    </div>
-  );
-};
-
-createRoot(document.getElementById('root')).render(<App/>);
-</script>
 </body>
 </html>
