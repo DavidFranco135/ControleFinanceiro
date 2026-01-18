@@ -293,7 +293,7 @@
 
             if (!user) return html`
                 <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950">
-                    <div className="bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-slate-800">
+                    <div className="bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl w-full max-sm border border-slate-800">
                         <div className="text-center mb-10">
                             <div className="w-16 h-16 bg-violet-600 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white shadow-xl rotate-3">
                                 <i className="fas fa-wallet text-3xl"></i>
@@ -363,7 +363,7 @@
                         </div>
                     `}
 
-                    <!-- Sidebar -->
+                    <!-- Sidebar (Desktop) -->
                     <aside className="hidden md:flex w-72 bg-slate-900 border-r border-slate-800 flex-col sticky top-0 h-screen">
                         <div className="p-10">
                             <div className="flex items-center gap-3 mb-12">
@@ -538,13 +538,21 @@
                             <i className="fas fa-home text-lg"></i>
                             <span className="text-[8px] font-black uppercase tracking-widest">Início</span>
                         </button>
-                        <button onClick=${() => {setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true);}} 
-                            className="bg-violet-600 text-white w-16 h-16 rounded-[2rem] -mt-14 shadow-2xl flex items-center justify-center border-4 border-slate-950 active:scale-90 transition-all">
-                            <i className="fas fa-plus text-2xl"></i>
-                        </button>
                         <button onClick=${() => setActiveTab('transactions')} className=${`flex flex-col items-center gap-1 transition-all ${activeTab === 'transactions' ? 'text-violet-400 scale-110' : 'text-slate-500'}`}>
                             <i className="fas fa-list text-lg"></i>
                             <span className="text-[8px] font-black uppercase tracking-widest">Extrato</span>
+                        </button>
+                        <button onClick=${() => {setEditingId(null); setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] }); setShowModal(true);}} 
+                            className="bg-violet-600 text-white w-14 h-14 rounded-[1.5rem] -mt-10 shadow-2xl flex items-center justify-center border-4 border-slate-950 active:scale-90 transition-all">
+                            <i className="fas fa-plus text-xl"></i>
+                        </button>
+                        <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1 transition-all ${activeTab === 'settings' ? 'text-violet-400 scale-110' : 'text-slate-500'}`}>
+                            <i className="fas fa-user-cog text-lg"></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Ajustes</span>
+                        </button>
+                        <button onClick=${handleLogout} className="flex flex-col items-center gap-1 text-rose-500">
+                            <i className="fas fa-sign-out-alt text-lg"></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Sair</span>
                         </button>
                     </nav>
                 </div>`;
