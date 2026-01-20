@@ -1,28 +1,620 @@
-export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(200).json({ ok: true, message: "Webhook online" });
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gerenciador Financeiro Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        :root {
+            --primary: #8b5cf6;
+            --bg-dark: #0f172a;
+            --card-dark: #1e293b;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: #f1f5f9;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .loader { 
+            border-top-color: var(--primary); 
+            animation: spinner 0.8s ease-in-out infinite; 
+        }
+        @keyframes spinner { to { transform: rotate(360deg); } }
+
+        .animate-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card-stat {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .card-stat:hover {
+            transform: translateY(-5px);
+            background-color: #334155;
+        }
+
+        .sidebar-item-active {
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
+            color: var(--primary);
+            border-right: 3px solid var(--primary);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        input, select { font-size: 16px !important; color: white !important; }
+        input::placeholder { color: #94a3b8 !important; }
+
+        /* Floating Button for Desktop */
+        .fab-desktop {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            z-index: 50;
+        }
+    </style>
+
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom": "https://esm.sh/react-dom@18.2.0",
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
+        "htm": "https://esm.sh/htm@3.1.1"
+      }
     }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
 
-    const token = process.env.KIWIFY_TOKEN;
+    <script type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
+        import ReactDOM from 'react-dom';
+        import htm from 'htm';
+        import { initializeApp } from "firebase/app";
+        import { 
+            getFirestore, doc, setDoc, getDoc, collection, 
+            addDoc, query, where, onSnapshot, deleteDoc, updateDoc
+        } from "firebase/firestore";
 
-    if (!token) {
-      return res.status(500).json({ error: "Token não configurado" });
-    }
+        const html = htm.bind(React.createElement);
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+            authDomain: "planilha-fina.firebaseapp.com",
+            projectId: "planilha-fina",
+            storageBucket: "planilha-fina.firebasestorage.app",
+            messagingSenderId: "288466007894",
+            appId: "1:288466007894:web:e917cc6eeac421671188f7"
+        };
 
-    const receivedToken = req.headers["x-kiwify-token"];
+        const fbApp = initializeApp(firebaseConfig);
+        const db = getFirestore(fbApp);
 
-    if (receivedToken !== token) {
-      return res.status(401).json({ error: "Token inválido" });
-    }
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [transactions, setTransactions] = useState([]);
+            const [showModal, setShowModal] = useState(false);
+            const [editingId, setEditingId] = useState(null);
+            const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+            const [typeFilter, setTypeFilter] = useState('ALL');
+            const [keepConnected, setKeepConnected] = useState(true);
+            const fileInputRef = useRef(null);
 
-    const data = req.body;
+            const [newTx, setNewTx] = useState({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
+            const [email, setEmail] = useState('');
+            const [pass, setPass] = useState('');
+            const [showPass, setShowPass] = useState(false);
+            const [isRegistering, setIsRegistering] = useState(false);
+            const [authLoading, setAuthLoading] = useState(false);
 
-    console.log("Webhook recebido:", data);
+            const [profileName, setProfileName] = useState('');
+            const [profilePhoto, setProfilePhoto] = useState('');
 
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error("Erro no webhook:", err);
-    return res.status(500).json({ error: "Erro interno" });
-  }
-}
+            const startDataSync = (sid) => {
+                setLoading(true);
+                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+                    if (s.exists()) {
+                        const userData = { id: s.id, ...s.data() };
+                        
+                        // LÓGICA DE BLOQUEIO KIWIFY
+                        // Se não for o Admin Niklaus e o status não for pago, bloqueia
+                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
+                             alert("Acesso Bloqueado: Pagamento não identificado ou reembolsado.");
+                             handleLogout();
+                             return;
+                        }
+
+                        setUser(userData);
+                        setProfileName(userData.appName || 'Meu Perfil');
+                        setProfilePhoto(userData.photoURL || '');
+                    }
+                    else handleLogout();
+                });
+
+                const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                const unsubTx = onSnapshot(q, (s) => {
+                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+                    setTransactions(docs.sort((a, b) => new Date(b.date) - new Date(a.date)));
+                    setLoading(false);
+                });
+                return () => { unsubUser(); unsubTx(); };
+            };
+
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
+
+            const handleAuth = async (e) => {
+                e.preventDefault();
+                setAuthLoading(true);
+                const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+                
+                try {
+                    // VERIFICAÇÃO SUPER USUÁRIO (NIKLAUS)
+                    if (email.toLowerCase() === 'niklaus' && pass === '135227') {
+                         const refAdmin = doc(db, "users", "niklaus");
+                         const sAdmin = await getDoc(refAdmin);
+                         if (!sAdmin.exists()) {
+                             await setDoc(refAdmin, { email: 'Niklaus', password: pass, appName: 'Niklaus Admin', status: 'paid' });
+                         }
+                         const storage = keepConnected ? localStorage : sessionStorage;
+                         storage.setItem('belaju_sid', "niklaus");
+                         startDataSync("niklaus");
+                         return;
+                    }
+
+                    const ref = doc(db, "users", safeId);
+                    const s = await getDoc(ref);
+                    
+                    if (isRegistering) {
+                        if (s.exists()) alert("E-mail já cadastrado");
+                        else {
+                            // Novos usuários começam com status 'pending' até que o Webhook do Kiwify atualize
+                            await setDoc(ref, { 
+                                email, 
+                                password: pass, 
+                                appName: 'Meu Perfil', 
+                                photoURL: '',
+                                status: 'pending' // Aguardando Webhook Kiwify
+                            });
+                            alert("Conta criada! O acesso será liberado após a confirmação do pagamento no Kiwify.");
+                        }
+                    } else {
+                        if (s.exists() && s.data().password === pass) {
+                            // Verifica status no login
+                            if (s.data().status === 'paid') {
+                                const storage = keepConnected ? localStorage : sessionStorage;
+                                storage.setItem('belaju_sid', safeId);
+                                startDataSync(safeId);
+                            } else {
+                                alert("Acesso restrito: Sua compra no Kiwify ainda não foi aprovada ou foi reembolsada.");
+                            }
+                        } else alert("Dados inválidos");
+                    }
+                } catch (err) { alert("Erro de conexão"); }
+                finally { setAuthLoading(false); }
+            };
+
+            const handleLogout = () => {
+                localStorage.removeItem('belaju_sid');
+                sessionStorage.removeItem('belaju_sid');
+                setUser(null);
+                setTransactions([]);
+                setLoading(false);
+            };
+
+            const changeMonth = (offset) => {
+                const [year, month] = filterMonth.split('-').map(Number);
+                const date = new Date(year, month - 1 + offset, 1);
+                setFilterMonth(date.toISOString().substring(0, 7));
+            };
+
+            const openEdit = (tx) => {
+                setEditingId(tx.id);
+                setNewTx({ 
+                    description: tx.description, 
+                    amount: tx.amount.toString().replace('.', ','), 
+                    type: tx.type, 
+                    date: tx.date.split('T')[0] 
+                });
+                setShowModal(true);
+            };
+
+            const openAddTransaction = () => {
+                setEditingId(null);
+                setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
+                setShowModal(true);
+            };
+
+            const saveTransaction = async (e) => {
+                e.preventDefault();
+                const amountValue = parseFloat(newTx.amount.toString().replace(',', '.'));
+                const finalDate = new Date(newTx.date + "T12:00:00").toISOString();
+                try {
+                    if (editingId) await updateDoc(doc(db, "transactions", editingId), { ...newTx, amount: amountValue, date: finalDate });
+                    else await addDoc(collection(db, "transactions"), { ...newTx, amount: amountValue, date: finalDate, userId: user.id });
+                    setShowModal(false);
+                    setEditingId(null);
+                    setNewTx({ description: '', amount: '', type: 'INCOME', date: new Date().toISOString().split('T')[0] });
+                } catch (e) { alert("Erro ao salvar"); }
+            };
+
+            const handlePhotoUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (file.size > 2 * 1024 * 1024) {
+                    alert("A imagem deve ter no máximo 2MB");
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setProfilePhoto(reader.result);
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const updateProfile = async () => {
+                try {
+                    await updateDoc(doc(db, "users", user.id), { 
+                        appName: profileName,
+                        photoURL: profilePhoto 
+                    });
+                    alert("Perfil atualizado!");
+                } catch (e) { alert("Erro ao atualizar perfil"); }
+            };
+
+            const filteredTransactions = useMemo(() => {
+                return transactions.filter(t => t.date.startsWith(filterMonth))
+                                  .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter);
+            }, [transactions, filterMonth, typeFilter]);
+
+            const totals = useMemo(() => {
+                const monthOnly = transactions.filter(t => t.date.startsWith(filterMonth));
+                return monthOnly.reduce((acc, t) => {
+                    if (t.type === 'INCOME') acc.inc += t.amount;
+                    else acc.exp += t.amount;
+                    acc.bal = acc.inc - acc.exp;
+                    return acc;
+                }, { inc: 0, exp: 0, bal: 0 });
+            }, [transactions, filterMonth]);
+
+            const exportPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const docPDF = new jsPDF();
+                docPDF.setFontSize(22);
+                docPDF.text(profileName, 14, 20);
+                const rows = filteredTransactions.map(t => [new Date(t.date).toLocaleDateString('pt-BR'), t.description, t.type === 'INCOME' ? 'Entrada' : 'Saída', `R$ ${t.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`]);
+                docPDF.autoTable({ startY: 35, head: [['Data', 'Descrição', 'Tipo', 'Valor']], body: rows });
+                docPDF.save(`extrato-${filterMonth}.pdf`);
+            };
+
+            const Avatar = ({ src, size = 'md' }) => {
+                const classes = {
+                    sm: 'w-8 h-8 rounded-lg',
+                    md: 'w-12 h-12 rounded-xl',
+                    lg: 'w-20 h-20 rounded-3xl'
+                };
+                return html`
+                    <div className="${classes[size]} bg-slate-700 flex items-center justify-center overflow-hidden border-2 border-slate-600 shadow-sm">
+                        ${src ? html`<img src="${src}" className="w-full h-full object-cover" />` : html`<i className="fas fa-user text-slate-500"></i>`}
+                    </div>
+                `;
+            }
+
+            if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-12 h-12 border-4 border-slate-800 rounded-full"></div></div>`;
+
+            if (!user) return html`
+                <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950">
+                    <div className="bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl w-full max-sm border border-slate-800">
+                        <div className="text-center mb-10">
+                            <div className="w-16 h-16 bg-violet-600 rounded-3xl flex items-center justify-center mx-auto mb-6 text-white shadow-xl rotate-3">
+                                <i className="fas fa-wallet text-3xl"></i>
+                            </div>
+                            <h1 className="text-3xl font-extrabold text-white tracking-tight">${isRegistering ? 'Nova Conta' : 'Acessar'}</h1>
+                        </div>
+                        <form onSubmit=${handleAuth} className="space-y-5">
+                            <input type="text" required placeholder="E-mail ou Usuário" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 transition-all text-white" value=${email} onInput=${e => setEmail(e.target.value)} />
+                            <div className="relative">
+                                <input type=${showPass ? "text" : "password"} required placeholder="Senha" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 transition-all text-white" value=${pass} onInput=${e => setPass(e.target.value)} />
+                                <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-[18px] text-slate-500">
+                                    <i className=${showPass ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+                                </button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 px-2">
+                                <input type="checkbox" id="keep" checked=${keepConnected} onChange=${e => setKeepConnected(e.target.checked)} className="w-4 h-4 accent-violet-500" />
+                                <label htmlFor="keep" className="text-xs text-slate-400 font-medium cursor-pointer">Manter conectado</label>
+                            </div>
+
+                            <button disabled=${authLoading} className="w-full py-5 bg-violet-600 text-white font-bold rounded-2xl shadow-xl active:scale-95 transition-all mt-4">
+                                ${authLoading ? 'Processando...' : isRegistering ? 'Cadastrar' : 'Entrar'}
+                            </button>
+                            <button type="button" onClick=${() => setIsRegistering(!isRegistering)} className="w-full text-violet-400 font-bold text-sm hover:underline">
+                                ${isRegistering ? 'Já tenho conta' : 'Criar nova conta'}
+                            </button>
+                        </form>
+                    </div>
+                </div>`;
+
+            return html`
+                <div className="min-h-screen flex flex-col md:flex-row">
+                    
+                    <!-- Modal Transação -->
+                    ${showModal && html`
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in">
+                            <div className="bg-slate-900 w-full max-w-md rounded-[3rem] p-10 shadow-3xl border border-slate-800">
+                                <h2 className="text-2xl font-extrabold text-white mb-8">${editingId ? 'Editar' : 'Novo'} Registro</h2>
+                                <form onSubmit=${saveTransaction} className="space-y-5">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-2 tracking-widest">Descrição</label>
+                                        <input type="text" required placeholder="Ex: Mercado" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500" value=${newTx.description} onInput=${e => setNewTx({...newTx, description: e.target.value})} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2 tracking-widest">Valor</label>
+                                            <input type="text" required placeholder="0,00" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 font-bold" value=${newTx.amount} onInput=${e => setNewTx({...newTx, amount: e.target.value})} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-2 tracking-widest">Data</label>
+                                            <input type="date" required className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500" value=${newTx.date} onInput=${e => setNewTx({...newTx, date: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-2 tracking-widest">Tipo</label>
+                                        <select className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 font-bold" value=${newTx.type} onChange=${e => setNewTx({...newTx, type: e.target.value})}>
+                                            <option value="INCOME">Entrada (+)</option>
+                                            <option value="EXPENSE">Saída (-)</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex gap-4 pt-6">
+                                        <button type="button" onClick=${() => {setShowModal(false); setEditingId(null);}} className="flex-1 py-5 font-bold text-slate-400">Cancelar</button>
+                                        <button type="submit" className="flex-2 px-10 py-5 bg-violet-600 text-white font-bold rounded-2xl shadow-xl active:scale-95">Salvar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    `}
+
+                    <!-- Sidebar (Desktop) -->
+                    <aside className="hidden md:flex w-72 bg-slate-900 border-r border-slate-800 flex-col sticky top-0 h-screen">
+                        <div className="p-10">
+                            <div className="flex items-center gap-3 mb-12">
+                                <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                    <i className="fas fa-chart-line text-lg"></i>
+                                </div>
+                                <h2 className="text-xl font-black text-white tracking-tight">Finanças</h2>
+                            </div>
+
+                            <nav className="space-y-1">
+                                <button onClick=${() => setActiveTab('dashboard')} className=${`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition-all ${activeTab === 'dashboard' ? 'sidebar-item-active' : 'text-slate-500 hover:bg-slate-800/50'}`}>
+                                    <i className="fas fa-home w-5"></i> Início
+                                </button>
+                                <button onClick=${() => setActiveTab('transactions')} className=${`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition-all ${activeTab === 'transactions' ? 'sidebar-item-active' : 'text-slate-500 hover:bg-slate-800/50'}`}>
+                                    <i className="fas fa-list w-5"></i> Extrato
+                                </button>
+                                <button onClick=${() => setActiveTab('settings')} className=${`w-full flex items-center gap-4 p-4 rounded-2xl font-bold transition-all ${activeTab === 'settings' ? 'sidebar-item-active' : 'text-slate-500 hover:bg-slate-800/50'}`}>
+                                    <i className="fas fa-user-cog w-5"></i> Ajustes
+                                </button>
+                            </nav>
+                        </div>
+
+                        <div className="mt-auto p-10 border-t border-slate-800">
+                            <button onClick=${handleLogout} className="w-full flex items-center justify-center gap-3 p-4 text-rose-500 font-bold hover:bg-rose-500/10 rounded-2xl transition-all">
+                                <i className="fas fa-sign-out-alt"></i> Sair
+                            </button>
+                        </div>
+                    </aside>
+
+                    <!-- Botão Adicionar Desktop -->
+                    <button onClick=${openAddTransaction} className="hidden md:flex fab-desktop bg-violet-600 text-white w-16 h-16 rounded-[1.5rem] shadow-2xl items-center justify-center hover:scale-110 active:scale-95 transition-all border-4 border-slate-950">
+                        <i className="fas fa-plus text-xl"></i>
+                    </button>
+
+                    <main className="flex-1 p-5 md:p-12 pb-32">
+                        
+                        <!-- Header Premium -->
+                        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
+                            <div className="animate-in flex items-center gap-5">
+                                <${Avatar} src=${profilePhoto} size="lg" />
+                                <div>
+                                    <h1 className="text-3xl font-black text-white tracking-tight leading-none">${profileName}</h1>
+                                    <p className="text-slate-500 text-sm mt-2">${user.email}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="glass p-2 rounded-3xl flex items-center gap-2 w-full lg:w-auto">
+                                <button onClick=${() => changeMonth(-1)} className="w-10 h-10 flex items-center justify-center hover:bg-slate-800 rounded-xl text-slate-500 transition-all"><i className="fas fa-chevron-left text-xs"></i></button>
+                                <div className="flex-1 flex flex-col items-center min-w-[130px] px-2">
+                                    <span className="text-[8px] text-violet-400 font-black uppercase tracking-[2px]">Período</span>
+                                    <span className="text-sm font-black text-slate-200 capitalize">${new Date(filterMonth + '-02').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+                                </div>
+                                <button onClick=${() => changeMonth(1)} className="w-10 h-10 flex items-center justify-center hover:bg-slate-800 rounded-xl text-slate-500 transition-all"><i className="fas fa-chevron-right text-xs"></i></button>
+                            </div>
+                        </header>
+
+                        ${activeTab === 'dashboard' && html`
+                            <div className="space-y-8 animate-in">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <!-- Entradas -->
+                                    <div onClick=${() => {setActiveTab('transactions'); setTypeFilter('INCOME');}} className="bg-slate-900 p-8 rounded-[3rem] border border-slate-800 shadow-sm card-stat relative overflow-hidden">
+                                        <div className="w-7 h-7 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-500 mb-6"><i className="fas fa-plus-circle text-[10px]"></i></div>
+                                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Entradas</p>
+                                        <p className="text-3xl font-black text-emerald-500">R$ ${totals.inc.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+
+                                    <!-- Saídas -->
+                                    <div onClick=${() => {setActiveTab('transactions'); setTypeFilter('EXPENSE');}} className="bg-slate-900 p-8 rounded-[3rem] border border-slate-800 shadow-sm card-stat relative overflow-hidden">
+                                        <div className="w-7 h-7 bg-rose-500/10 rounded-lg flex items-center justify-center text-rose-500 mb-6"><i className="fas fa-minus-circle text-[10px]"></i></div>
+                                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">Saídas</p>
+                                        <p className="text-3xl font-black text-rose-500">R$ ${totals.exp.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+
+                                    <!-- Saldo -->
+                                    <div className=${`p-8 rounded-[3rem] shadow-2xl relative overflow-hidden transition-all duration-500 ${totals.bal >= 0 ? 'bg-emerald-600 shadow-emerald-900/20' : 'bg-rose-600 shadow-rose-900/20'}`}>
+                                        <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center text-white mb-6 backdrop-blur-md"><i className="fas fa-wallet text-[10px]"></i></div>
+                                        <p className="text-[11px] font-black text-white/60 uppercase tracking-widest mb-1">Saldo Líquido</p>
+                                        <p className="text-3xl font-black text-white">R$ ${totals.bal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-900 rounded-[3rem] border border-slate-800 overflow-hidden shadow-sm">
+                                    <div className="px-10 py-8 border-b border-slate-800 flex justify-between items-center">
+                                        <h3 className="text-lg font-black text-white">Atividades Recentes</h3>
+                                        <button onClick=${() => {setActiveTab('transactions'); setTypeFilter('ALL');}} className="text-violet-400 text-[10px] font-black uppercase">Ver Tudo</button>
+                                    </div>
+                                    <div className="divide-y divide-slate-800">
+                                        ${filteredTransactions.slice(0, 5).map(t => html`
+                                            <div className="flex items-center justify-between px-10 py-6 hover:bg-slate-800/50 transition-all cursor-pointer" onClick=${() => openEdit(t)}>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-bold text-slate-200 truncate">${t.description}</p>
+                                                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">${new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className=${`font-black text-lg ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        `)}
+                                    </div>
+                                </div>
+                            </div>
+                        `}
+
+                        ${activeTab === 'transactions' && html`
+                            <div className="space-y-6 animate-in">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-5 bg-slate-900 p-5 rounded-[2.5rem] border border-slate-800 shadow-sm">
+                                    <div className="flex p-1.5 bg-slate-950 rounded-2xl gap-2 w-full sm:w-auto ring-1 ring-slate-800">
+                                        <button onClick=${() => setTypeFilter('ALL')} className=${`flex-1 sm:flex-none px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'ALL' ? 'bg-slate-800 text-violet-400 shadow-sm' : 'text-slate-500'}`}>Tudo</button>
+                                        <button onClick=${() => setTypeFilter('INCOME')} className=${`flex-1 sm:flex-none px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'INCOME' ? 'bg-emerald-500/20 text-emerald-500 shadow-sm' : 'text-slate-500'}`}>Entradas</button>
+                                        <button onClick=${() => setTypeFilter('EXPENSE')} className=${`flex-1 sm:flex-none px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${typeFilter === 'EXPENSE' ? 'bg-rose-500/20 text-rose-500 shadow-sm' : 'text-slate-500'}`}>Saídas</button>
+                                    </div>
+                                    <button onClick=${exportPDF} className="w-full sm:w-auto px-8 py-4 bg-slate-800 text-white text-[10px] font-black rounded-2xl uppercase tracking-widest border border-slate-700">Relatório PDF</button>
+                                </div>
+
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                    ${filteredTransactions.map(t => html`
+                                        <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 shadow-sm flex flex-col md:flex-row items-center gap-6 animate-in group">
+                                            <div className="flex-1 flex items-center gap-5 w-full">
+                                                <div className=${`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                    <i className=${t.type === 'INCOME' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}></i>
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">${new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                                                    <h4 className="font-extrabold text-slate-200 truncate">${t.description}</h4>
+                                                    <p className=${`font-black text-lg mt-0.5 ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                        ${t.type === 'INCOME' ? '+' : '-'} R$ ${t.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 w-full md:w-auto">
+                                                <button onClick=${() => openEdit(t)} className="flex-1 md:w-11 h-11 bg-slate-800 text-slate-500 rounded-xl flex items-center justify-center hover:text-violet-400 transition-all"><i className="fas fa-edit text-sm"></i></button>
+                                                <button onClick=${() => {if(confirm("Excluir?")) deleteDoc(doc(db, "transactions", t.id))}} className="flex-1 md:w-11 h-11 bg-slate-800 text-slate-500 rounded-xl flex items-center justify-center hover:text-rose-400 transition-all"><i className="fas fa-trash text-sm"></i></button>
+                                            </div>
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                        `}
+
+                        ${activeTab === 'settings' && html`
+                            <div className="max-w-2xl mx-auto space-y-8 animate-in mt-6">
+                                <div className="bg-slate-900 p-10 rounded-[3rem] border border-slate-800 shadow-sm">
+                                    <div className="flex flex-col items-center text-center mb-10">
+                                        <div className="mb-4 relative group cursor-pointer" onClick=${() => fileInputRef.current.click()}>
+                                            <${Avatar} src=${profilePhoto} size="lg" />
+                                            <div className="absolute inset-0 bg-black/40 rounded-3xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <i className="fas fa-camera text-white"></i>
+                                            </div>
+                                            <input type="file" ref=${fileInputRef} className="hidden" accept="image/*" onChange=${handlePhotoUpload} />
+                                        </div>
+                                        <h3 className="text-xl font-black text-white">Ajustes do Perfil</h3>
+                                        <p className="text-slate-500 text-xs mt-1">Clique na foto para escolher da galeria</p>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Seu Nome / Título</label>
+                                            <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 font-bold transition-all text-white" 
+                                                value=${profileName} onInput=${e => setProfileName(e.target.value)} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Link da Foto (Opcional)</label>
+                                            <input type="text" placeholder="https://..." className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 transition-all text-white" 
+                                                value=${profilePhoto} onInput=${e => setProfilePhoto(e.target.value)} />
+                                        </div>
+                                        <button onClick=${updateProfile} className="w-full py-5 bg-violet-600 text-white font-bold rounded-2xl shadow-xl hover:scale-[1.01] transition-all active:scale-95 uppercase tracking-widest text-xs">
+                                            Salvar Alterações
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `}
+                    </main>
+
+                    <!-- Navegação Mobile -->
+                    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 flex justify-around p-5 z-[80] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
+                        <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1 transition-all ${activeTab === 'dashboard' ? 'text-violet-400 scale-110' : 'text-slate-500'}`}>
+                            <i className="fas fa-home text-lg"></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Início</span>
+                        </button>
+                        <button onClick=${() => setActiveTab('transactions')} className=${`flex flex-col items-center gap-1 transition-all ${activeTab === 'transactions' ? 'text-violet-400 scale-110' : 'text-slate-500'}`}>
+                            <i className="fas fa-list text-lg"></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Extrato</span>
+                        </button>
+                        <button onClick=${openAddTransaction} 
+                            className="bg-violet-600 text-white w-14 h-14 rounded-[1.5rem] -mt-10 shadow-2xl flex items-center justify-center border-4 border-slate-950 active:scale-90 transition-all">
+                            <i className="fas fa-plus text-xl"></i>
+                        </button>
+                        <button onClick=${() => setActiveTab('settings')} className=${`flex flex-col items-center gap-1 transition-all ${activeTab === 'settings' ? 'text-violet-400 scale-110' : 'text-slate-500'}`}>
+                            <i className="fas fa-user-cog text-lg"></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Ajustes</span>
+                        </button>
+                        <button onClick=${handleLogout} className="flex flex-col items-center gap-1 text-rose-500">
+                            <i className="fas fa-sign-out-alt text-lg"></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Sair</span>
+                        </button>
+                    </nav>
+                </div>`;
+        };
+
+        ReactDOM.render(html`<${App} />`, document.getElementById('root'));
+    </script>
+</body>
+</html>
