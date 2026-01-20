@@ -1,30 +1,28 @@
-import admin from "firebase-admin";
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: "planilha-fina",
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
 export default async function handler(req, res) {
-  const event = req.body.event;
-  const email = req.body.customer?.email?.toLowerCase();
+  try {
+    if (req.method !== "POST") {
+      return res.status(200).json({ ok: true, message: "Webhook online" });
+    }
 
-  if (!email) return res.status(400).send("Email ausente");
+    const token = process.env.KIWIFY_TOKEN;
 
-  const snap = await admin.firestore()
-    .collection("users")
-    .where("email", "==", email)
-    .get();
+    if (!token) {
+      return res.status(500).json({ error: "Token não configurado" });
+    }
 
-  snap.forEach(async (doc) => {
-    if (event === "order_approved") await doc.ref.update({ status: "paid" });
-    if (event === "refund") await doc.ref.update({ status: "refunded" });
-  });
+    const receivedToken = req.headers["x-kiwify-token"];
 
-  res.status(200).send("OK");
+    if (receivedToken !== token) {
+      return res.status(401).json({ error: "Token inválido" });
+    }
+
+    const data = req.body;
+
+    console.log("Webhook recebido:", data);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Erro no webhook:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
 }
