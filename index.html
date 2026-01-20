@@ -147,6 +147,15 @@
                 const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
                     if (s.exists()) {
                         const userData = { id: s.id, ...s.data() };
+                        
+                        // LÓGICA DE BLOQUEIO KIWIFY
+                        // Se não for o Admin Niklaus e o status não for pago, bloqueia
+                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
+                             alert("Acesso Bloqueado: Pagamento não identificado ou reembolsado.");
+                             handleLogout();
+                             return;
+                        }
+
                         setUser(userData);
                         setProfileName(userData.appName || 'Meu Perfil');
                         setProfilePhoto(userData.photoURL || '');
@@ -173,22 +182,47 @@
                 e.preventDefault();
                 setAuthLoading(true);
                 const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+                
                 try {
+                    // VERIFICAÇÃO SUPER USUÁRIO (NIKLAUS)
+                    if (email.toLowerCase() === 'niklaus' && pass === '135227') {
+                         const refAdmin = doc(db, "users", "niklaus");
+                         const sAdmin = await getDoc(refAdmin);
+                         if (!sAdmin.exists()) {
+                             await setDoc(refAdmin, { email: 'Niklaus', password: pass, appName: 'Niklaus Admin', status: 'paid' });
+                         }
+                         const storage = keepConnected ? localStorage : sessionStorage;
+                         storage.setItem('belaju_sid', "niklaus");
+                         startDataSync("niklaus");
+                         return;
+                    }
+
                     const ref = doc(db, "users", safeId);
                     const s = await getDoc(ref);
+                    
                     if (isRegistering) {
                         if (s.exists()) alert("E-mail já cadastrado");
                         else {
-                            await setDoc(ref, { email, password: pass, appName: 'Meu Perfil', photoURL: '' });
-                            const storage = keepConnected ? localStorage : sessionStorage;
-                            storage.setItem('belaju_sid', safeId);
-                            startDataSync(safeId);
+                            // Novos usuários começam com status 'pending' até que o Webhook do Kiwify atualize
+                            await setDoc(ref, { 
+                                email, 
+                                password: pass, 
+                                appName: 'Meu Perfil', 
+                                photoURL: '',
+                                status: 'pending' // Aguardando Webhook Kiwify
+                            });
+                            alert("Conta criada! O acesso será liberado após a confirmação do pagamento no Kiwify.");
                         }
                     } else {
                         if (s.exists() && s.data().password === pass) {
-                            const storage = keepConnected ? localStorage : sessionStorage;
-                            storage.setItem('belaju_sid', safeId);
-                            startDataSync(safeId);
+                            // Verifica status no login
+                            if (s.data().status === 'paid') {
+                                const storage = keepConnected ? localStorage : sessionStorage;
+                                storage.setItem('belaju_sid', safeId);
+                                startDataSync(safeId);
+                            } else {
+                                alert("Acesso restrito: Sua compra no Kiwify ainda não foi aprovada ou foi reembolsada.");
+                            }
                         } else alert("Dados inválidos");
                     }
                 } catch (err) { alert("Erro de conexão"); }
@@ -315,7 +349,7 @@
                             <h1 className="text-3xl font-extrabold text-white tracking-tight">${isRegistering ? 'Nova Conta' : 'Acessar'}</h1>
                         </div>
                         <form onSubmit=${handleAuth} className="space-y-5">
-                            <input type="email" required placeholder="E-mail" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 transition-all text-white" value=${email} onInput=${e => setEmail(e.target.value)} />
+                            <input type="text" required placeholder="E-mail ou Usuário" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 transition-all text-white" value=${email} onInput=${e => setEmail(e.target.value)} />
                             <div className="relative">
                                 <input type=${showPass ? "text" : "password"} required placeholder="Senha" className="w-full p-4 bg-slate-800 border-0 rounded-2xl outline-none ring-1 ring-slate-700 focus:ring-2 focus:ring-violet-500 transition-all text-white" value=${pass} onInput=${e => setPass(e.target.value)} />
                                 <button type="button" onClick=${() => setShowPass(!showPass)} className="absolute right-4 top-[18px] text-slate-500">
