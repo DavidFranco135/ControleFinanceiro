@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanças</title>
     
+    <!-- Configurações para Web App (PWA) e Favicons -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
     <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
     
+    <!-- Importação de bibliotecas externas: Tailwind CSS, jsPDF e FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -24,6 +26,7 @@
             --bg-dark: #0f172a;
         }
 
+        /* Estilização Geral do Body */
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: var(--bg-dark); 
@@ -33,18 +36,21 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* Efeito de Vidro Fosco (Glassmorphism) */
         .glass {
             background: rgba(30, 41, 59, 0.7);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
+        /* Animação de Loading */
         .loader { 
             border-top-color: var(--primary); 
             animation: spinner 0.8s ease-in-out infinite; 
         }
         @keyframes spinner { to { transform: rotate(360deg); } }
 
+        /* Animações de Entrada de Elementos */
         .animate-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
@@ -54,6 +60,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* Destaque para item ativo na Sidebar */
         .sidebar-item-active {
             background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
             color: var(--primary);
@@ -61,9 +68,11 @@
             text-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
         }
 
+        /* Customização de Scrollbar */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         
+        /* Ajuste de inputs para dispositivos móveis */
         input, select, textarea { font-size: 16px !important; color: white !important; }
         
         @media (max-width: 640px) {
@@ -81,6 +90,7 @@
             z-index: 9999 !important;
         }
 
+        /* Efeito de desfoque para ocultar valores */
         .blur-value {
             filter: blur(8px);
             opacity: 0.6;
@@ -92,7 +102,7 @@
             transition: filter 0.3s ease, opacity 0.3s ease;
         }
 
-        /* Toggle switch styling */
+        /* Estilização do Toggle Switch (Configurações) */
         .switch {
           position: relative;
           display: inline-block;
@@ -139,6 +149,7 @@
         }
     </style>
 
+    <!-- Mapeamento de Módulos (ESM) -->
     <script type="importmap">
     {
       "imports": {
@@ -164,8 +175,10 @@
             addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, serverTimestamp, orderBy, getDocs
         } from "firebase/firestore";
 
+        // Bind do htm para usar sintaxe similar a JSX sem necessidade de build step
         const html = htm.bind(React.createElement);
         
+        // Configuração do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
             authDomain: "planilha-fina.firebaseapp.com",
@@ -178,12 +191,14 @@
         const fbApp = initializeApp(firebaseConfig);
         const db = getFirestore(fbApp);
 
-        // Preload sounds
+        // Carregamento prévio de efeitos sonoros
         const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
         const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
-        // Reduzir volume em 70% (volume 1.0 -> 0.3)
-        trashSound.volume = 0.3;
+        trashSound.volume = 0.3; // Volume reduzido para o som de exclusão
 
+        /**
+         * Componente de Avatar reutilizável
+         */
         const Avatar = ({ src, size = 'md' }) => {
             const classes = { sm: 'w-8 h-8 rounded-lg', md: 'w-10 h-10 rounded-xl', lg: 'w-16 h-16 rounded-2xl' };
             return html`
@@ -193,59 +208,72 @@
             `;
         };
 
+        /**
+         * Componente Principal da Aplicação
+         */
         const App = () => {
+            // Estados Principais de Usuário e UI
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
             const [activeTab, setActiveTab] = useState('dashboard');
             const [transactions, setTransactions] = useState([]);
             const [showModal, setShowModal] = useState(false);
             const [editingId, setEditingId] = useState(null);
+            
+            // Filtros de Visualização
             const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
             const [typeFilter, setTypeFilter] = useState('ALL');
             const [methodFilter, setMethodFilter] = useState('ALL');
-            const [keepConnected, setKeepConnected] = useState(true);
             const [showValues, setShowValues] = useState(true);
             const [soundEnabled, setSoundEnabled] = useState(true);
             
+            // Modos de Balanço (Mensal vs Acumulado/Personalizado)
             const [balanceMode, setBalanceMode] = useState('MONTHLY');
             const [accumStart, setAccumStart] = useState('');
             const [accumEnd, setAccumEnd] = useState('');
             const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
+            // Referências de UI
             const fileInputPrincipalRef = useRef(null);
             const fileInputSecondaryRef = useRef(null);
             const notificationDropdownRef = useRef(null);
 
+            // Estado para nova transação
             const [newTx, setNewTx] = useState({ 
                 description: '', amount: '', type: 'INCOME', 
                 date: new Date().toISOString().split('T')[0],
                 method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
             });
 
+            // Estados de Autenticação
             const [email, setEmail] = useState('');
             const [pass, setPass] = useState('');
             const [showPass, setShowPass] = useState(false);
             const [isRegistering, setIsRegistering] = useState(false);
             const [isRecovering, setIsRecovering] = useState(false);
             const [authLoading, setAuthLoading] = useState(false);
+            const [keepConnected, setKeepConnected] = useState(true);
 
+            // Perfil das Contas (Principal e Secundária)
             const [profileName, setProfileName] = useState('');
             const [secondaryName, setSecondaryName] = useState('');
             const [profilePhoto, setProfilePhoto] = useState('');
             const [secondaryPhoto, setSecondaryPhoto] = useState('');
 
+            // Controle de visualização de conta secundária no extrato
             const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
 
+            // Sugestões e Notificações
             const [suggestionText, setSuggestionText] = useState('');
             const [sendingSuggestion, setSendingSuggestion] = useState(false);
             const [userSuggestions, setUserSuggestions] = useState([]);
             const [adminSuggestions, setAdminSuggestions] = useState([]);
-            const [adminReplyText, setAdminReplyText] = useState({});
             const [unreadCount, setUnreadCount] = useState(0);
             const [showNotificationList, setShowNotificationList] = useState(false);
 
             const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'niklaus', [user]);
 
+            // Funções de feedback sonoro
             const playMoneySfx = () => {
                 if (soundEnabled) {
                     bellSound.currentTime = 0;
@@ -260,11 +288,17 @@
                 }
             };
 
+            /**
+             * Inicia a sincronização de dados em tempo real com o Firestore
+             */
             const startDataSync = (sid) => {
                 setLoading(true);
+                
+                // Monitoramento de dados do usuário
                 const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
                     if (s.exists()) {
                         const userData = { id: s.id, ...s.data() };
+                        // Bloqueio de segurança para usuários não pagos (exceto adm)
                         if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
                              alert("Acesso Bloqueado.");
                              handleLogout();
@@ -279,6 +313,7 @@
                     } else handleLogout();
                 });
 
+                // Monitoramento das transações do usuário
                 const q = query(collection(db, "transactions"), where("userId", "==", sid));
                 const unsubTx = onSnapshot(q, (s) => {
                     const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
@@ -290,6 +325,7 @@
                     setLoading(false);
                 });
 
+                // Monitoramento de sugestões (feedback do admin)
                 let unsubSugg = () => {};
                 if (sid === 'niklaus') {
                     const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
@@ -309,12 +345,14 @@
                 return () => { unsubUser(); unsubTx(); unsubSugg(); };
             };
 
+            // Efeito para checar persistência de login ao carregar
             useEffect(() => {
                 const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
                 if (sid) return startDataSync(sid);
                 setLoading(false);
             }, []);
 
+            // Efeito para fechar dropdown de notificações ao clicar fora
             useEffect(() => {
                 const handleClickOutside = (event) => {
                     if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
@@ -325,12 +363,16 @@
                 return () => document.removeEventListener('mousedown', handleClickOutside);
             }, []);
 
+            // Notificações formatadas (respostas do admin)
             const notifications = useMemo(() => {
                 return [...userSuggestions]
                     .filter(sug => sug.reply)
                     .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
             }, [userSuggestions]);
 
+            /**
+             * Lógica de Autenticação (Login, Cadastro, Recuperação)
+             */
             const handleAuth = async (e) => {
                 e.preventDefault();
                 setAuthLoading(true);
@@ -339,6 +381,7 @@
                     const ref = doc(db, "users", safeId);
                     const s = await getDoc(ref);
                     
+                    // Caso: Recuperação de Senha (envia sugestão ao sistema)
                     if (isRecovering) {
                         if (s.exists()) {
                             await addDoc(collection(db, "suggestions"), {
@@ -359,6 +402,7 @@
                         return;
                     }
 
+                    // Caso: Cadastro de novo usuário
                     if (isRegistering) {
                         if (s.exists()) alert("E-mail já cadastrado");
                         else {
@@ -375,6 +419,7 @@
                             alert("Conta criada!");
                         }
                     } else {
+                        // Caso: Login convencional
                         if (s.exists() && s.data().password === pass) {
                             if (s.data().status === 'paid' || email.toLowerCase() === 'niklaus') {
                                 const storage = keepConnected ? localStorage : sessionStorage;
@@ -387,6 +432,9 @@
                 finally { setAuthLoading(false); }
             };
 
+            /**
+             * Limpa dados de sessão ao sair
+             */
             const handleLogout = () => {
                 localStorage.removeItem('belaju_sid');
                 sessionStorage.removeItem('belaju_sid');
@@ -395,6 +443,9 @@
                 setLoading(false);
             };
 
+            /**
+             * Exclusão de uma transação individual
+             */
             const handleDeleteTransaction = async (e, id) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -408,20 +459,26 @@
                 }
             };
 
+            /**
+             * Exclusão total da conta e dados vinculados
+             */
             const handleDeleteAccount = async () => {
                 if (confirm("ATENÇÃO: Isso excluirá permanentemente sua conta e todos os seus dados. Deseja continuar?")) {
                     const sid = user.id;
                     setLoading(true);
                     try {
                         const batch = writeBatch(db);
+                        // Apaga transações
                         const q = query(collection(db, "transactions"), where("userId", "==", sid));
                         const snapshot = await getDocs(q);
                         snapshot.forEach((d) => batch.delete(d.ref));
                         
+                        // Apaga sugestões
                         const sugQ = query(collection(db, "suggestions"), where("userId", "==", sid));
                         const sugSnapshot = await getDocs(sugQ);
                         sugSnapshot.forEach((d) => batch.delete(d.ref));
 
+                        // Apaga documento do usuário
                         batch.delete(doc(db, "users", sid));
                         await batch.commit();
                         playTrashSfx();
@@ -435,6 +492,9 @@
                 }
             };
 
+            /**
+             * Navegação entre meses no filtro
+             */
             const changeMonth = (offset) => {
                 const [year, month] = filterMonth.split('-').map(Number);
                 const date = new Date(year, month - 1 + offset, 1);
@@ -444,6 +504,7 @@
                 }
             };
 
+            // Funções de abertura de modais de edição/criação
             const openEdit = (tx) => {
                 setEditingId(tx.id);
                 setNewTx({ 
@@ -465,17 +526,22 @@
                 setShowModal(true);
             };
 
+            /**
+             * Salva ou atualiza transação (suporta parcelamento automático no crédito)
+             */
             const saveTransaction = async (e) => {
                 e.preventDefault();
                 const totalAmountInput = parseFloat(newTx.amount.toString().replace(',', '.')) || 0;
                 const instCount = parseInt(newTx.installments) || 1;
                 try {
                     if (editingId) {
+                        // Edição simples
                         await updateDoc(doc(db, "transactions", editingId), { 
                             ...newTx, amount: totalAmountInput, 
                             date: new Date(newTx.date + "T12:00:00").toISOString() 
                         });
                     } else if (instCount > 1 && newTx.method === 'CREDITO' && newTx.type === 'EXPENSE') {
+                        // Lógica de Parcelamento (Cria múltiplos registros em batch)
                         const batch = writeBatch(db);
                         const baseDate = new Date(newTx.date + "T12:00:00");
                         const installmentValue = totalAmountInput / instCount;
@@ -499,6 +565,7 @@
                         await batch.commit();
                         playMoneySfx();
                     } else {
+                        // Cadastro simples de transação
                         await addDoc(collection(db, "transactions"), { 
                             ...newTx, amount: totalAmountInput, 
                             date: new Date(newTx.date + "T12:00:00").toISOString(), 
@@ -511,6 +578,9 @@
                 } catch (e) { alert("Erro ao salvar"); }
             };
 
+            /**
+             * Upload de foto de perfil (conversão para base64)
+             */
             const handlePhotoUpload = (e, target) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -522,6 +592,9 @@
                 reader.readAsDataURL(file);
             };
 
+            /**
+             * Envio de feedback/sugestão
+             */
             const sendSuggestion = async () => {
                 if (!suggestionText.trim()) return;
                 setSendingSuggestion(true);
@@ -547,6 +620,9 @@
                 } catch (e) { console.error(e); }
             };
 
+            /**
+             * Compartilhamento do app (Web Share API)
+             */
             const handleAppShare = async () => {
                 const shareData = {
                     title: 'GestorFinanceiro - Controle Financeiro Premium',
@@ -566,8 +642,10 @@
                 }
             };
 
+            // Memoized: Transações filtradas para exibição atual
             const currentTransactions = useMemo(() => {
                 let base;
+                // Escolha da base (Principal vs Secundária)
                 if (activeTab === 'transactions') {
                     base = viewSecondaryTransactions ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
                 } else if (activeTab === 'secondary') {
@@ -576,6 +654,7 @@
                     base = transactions.filter(t => !t.isSecondary);
                 }
 
+                // Filtragem por Período
                 let filteredByDate = base;
                 if (balanceMode === 'ACCUMULATED') {
                     if (accumStart && accumEnd) {
@@ -588,11 +667,13 @@
                     filteredByDate = base.filter(t => (t.date || '').startsWith(filterMonth));
                 }
 
+                // Filtragem por Tipo e Canal
                 return filteredByDate
                            .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter)
                            .filter(t => methodFilter === 'ALL' ? true : t.method === methodFilter);
             }, [transactions, activeTab, filterMonth, typeFilter, methodFilter, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
 
+            // Memoized: Totais (Entradas, Saídas e Saldo)
             const totals = useMemo(() => {
                 const base = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) 
                     ? transactions.filter(t => t.isSecondary) 
@@ -620,12 +701,18 @@
                 return { ...stats, bal: stats.inc - stats.exp };
             }, [transactions, filterMonth, activeTab, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
 
+            /**
+             * Navegada para aba de extrato configurada
+             */
             const navigateToExtrato = (isSecondary, filter = 'ALL') => {
                 setViewSecondaryTransactions(isSecondary);
                 setTypeFilter(filter);
                 setActiveTab('transactions');
             };
 
+            /**
+             * Exportação de Relatório Financeiro em PDF
+             */
             const exportPDF = () => {
                 const { jsPDF } = window.jspdf;
                 const docPDF = new jsPDF();
@@ -663,8 +750,10 @@
                 docPDF.save(`financas-${title}-${new Date().getTime()}.pdf`);
             };
 
+            // Tela de Carregamento Inicial
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;
 
+            // Tela de Autenticação (Acesso)
             if (!user) return html`
                 <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950">
                     <div className="bg-slate-900 p-8 rounded-[1.5rem] shadow-2xl w-full max-w-[360px] border border-slate-800">
@@ -675,11 +764,13 @@
                             <h1 className="text-2xl font-black text-white">${isRecovering ? 'Recuperar Acesso' : isRegistering ? 'Criar Conta' : 'Acessar'}</h1>
                         </div>
                         <form onSubmit=${handleAuth} className="space-y-4">
+                            <!-- Campo de E-mail/Usuário -->
                             <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 tracking-widest">E-mail ou Usuário</label>
                                 <input type="text" required placeholder="E-mail utilizado na compra" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white focus:ring-violet-500 transition-all" value=${email} onInput=${e => setEmail(e.target.value)} />
                             </div>
                             
+                            <!-- Campo de Senha -->
                             ${!isRecovering && html`
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 tracking-widest">Sua Senha</label>
@@ -723,11 +814,14 @@
                     <div className="mt-8 text-center text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>
                 </div>`;
 
+            // Identificação da conta ativa no momento para exibição no Header
             const currentActiveName = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryName : profileName;
             const currentActivePhoto = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryPhoto : profilePhoto;
 
+            // Renderização da Interface Principal do App
             return html`
                 <div className="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
+                    <!-- Modal para Adicionar/Editar Transação -->
                     ${showModal && html`
                         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in">
                             <div className="bg-slate-900 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-800 max-h-[90vh] overflow-y-auto">
@@ -786,6 +880,7 @@
                         </div>
                     `}
 
+                    <!-- Sidebar Lateral (Desktop) -->
                     <aside className="hidden md:flex w-64 bg-slate-900 border-r border-slate-800 flex-col sticky top-0 h-screen">
                         <div className="p-8 text-center border-b border-slate-800/50">
                              <div className="w-10 h-10 bg-violet-600 rounded-xl flex items-center justify-center text-white mx-auto mb-2"><i className="fas fa-chart-line"></i></div>
@@ -804,7 +899,9 @@
                         </div>
                     </aside>
 
+                    <!-- Conteúdo Principal -->
                     <main className="flex-1 p-4 md:p-10 max-w-7xl mx-auto w-full">
+                        <!-- Header do App -->
                         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 animate-in relative z-[9999]">
                             <div className="flex items-center gap-4 w-full sm:w-auto">
                                 <${Avatar} src=${currentActivePhoto} size="lg" />
@@ -813,7 +910,12 @@
                                     <p className="text-slate-500 text-[10px] mt-1 font-bold uppercase tracking-widest truncate">${(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? 'Conta Secundária' : 'Conta Principal'}</p>
                                 </div>
                                 
+                                <!-- Botões Rápidos (Mobile Only) -->
                                 <div className="flex sm:hidden items-center gap-2 absolute top-0 right-0">
+                                    <button onClick=${handleLogout} className="flex flex-col items-center gap-0.5 glass rounded-xl text-rose-500 w-11 h-11 justify-center">
+                                        <i className="fas fa-sign-out-alt text-[12px]"></i>
+                                        <span className="text-[6px] font-black uppercase tracking-tighter">Sair</span>
+                                    </button>
                                     <button onClick=${() => { setShowCustomPeriod(!showCustomPeriod); if(!showCustomPeriod) setBalanceMode('ACCUMULATED'); }} className=${`flex flex-col items-center gap-0.5 glass rounded-xl transition-all w-11 h-11 justify-center ${showCustomPeriod ? 'text-violet-400 bg-violet-400/10' : 'text-slate-400'}`}>
                                         <i className="fas fa-calendar-alt text-[12px]"></i>
                                         <span className="text-[6px] font-black uppercase tracking-tighter">Periodo</span>
@@ -825,12 +927,14 @@
                                 </div>
                             </div>
                             
+                            <!-- Ações do Header (Olho, Notificações, Filtro Mensal) -->
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                                 <div className="flex items-center gap-2 flex-1 sm:flex-initial relative notification-layer" ref=${notificationDropdownRef}>
                                     <button onClick=${() => setShowValues(!showValues)} className="p-3 glass rounded-2xl flex items-center justify-center text-slate-400 hover:text-violet-400 transition-colors">
                                         <i className=${`fas ${showValues ? 'fa-eye' : 'fa-eye-slash'}`}></i>
                                     </button>
 
+                                    <!-- Sino de Notificações -->
                                     <div className="relative cursor-pointer hover:scale-110 transition-transform p-3 glass rounded-2xl flex items-center justify-center text-slate-400 hover:text-violet-400" onClick=${() => setShowNotificationList(!showNotificationList)}>
                                         <i className="fas fa-bell"></i>
                                         ${unreadCount > 0 ? html`
@@ -838,6 +942,7 @@
                                         ` : ''}
                                     </div>
                                     
+                                    <!-- Dropdown de Notificações -->
                                     ${showNotificationList ? html`
                                         <div className="absolute top-14 right-0 w-72 bg-slate-900 border border-slate-800 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[99999] overflow-hidden animate-in">
                                             <div className="p-4 border-b border-slate-800 bg-slate-800/30 flex justify-between items-center">
@@ -874,6 +979,7 @@
                                         </div>
                                     ` : ''}
 
+                                    <!-- Seletor de Mês -->
                                     <div className="glass p-1.5 rounded-2xl flex items-center gap-1 flex-1 sm:flex-initial">
                                         <button onClick=${() => changeMonth(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-violet-400 transition-colors"><i className="fas fa-chevron-left text-[10px]"></i></button>
                                         <div className="flex-1 text-center min-w-[120px]">
@@ -891,9 +997,14 @@
                                     <i className="fas fa-file-export"></i>
                                     <span className="text-[7px] font-black uppercase mt-1 leading-none">baixar relatorio</span>
                                 </button>
+                                <button onClick=${handleLogout} className="hidden sm:flex p-3 glass rounded-2xl text-rose-500 hover:bg-rose-500/10 transition-all flex-col items-center justify-center" title="Sair do App">
+                                    <i className="fas fa-sign-out-alt"></i>
+                                    <span className="text-[7px] font-black uppercase mt-1 leading-none">sair</span>
+                                </button>
                             </div>
                         </header>
 
+                        <!-- Filtro de Período Personalizado (Expansível) -->
                         ${showCustomPeriod ? html`
                             <div className="mb-6 p-6 glass rounded-3xl animate-in border border-violet-500/20 shadow-xl">
                                 <div className="flex items-center justify-between mb-4">
@@ -919,8 +1030,10 @@
                             </div>
                         ` : ''}
 
+                        <!-- Visualização: DASHBOARD / HOME -->
                         ${(activeTab === 'dashboard' || activeTab === 'secondary') ? html`
                             <div className="space-y-6 animate-in">
+                                <!-- Chaveador de Visão Mensal vs Geral -->
                                 <div className="flex justify-end mb-2">
                                     <div className="inline-flex p-1 bg-slate-900/50 rounded-xl border border-slate-800">
                                         <button onClick=${() => { setBalanceMode('MONTHLY'); setAccumStart(''); setAccumEnd(''); }} className=${`px-4 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${balanceMode === 'MONTHLY' ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20' : 'text-slate-500 hover:text-slate-300'}`}>Visão Mensal</button>
@@ -928,6 +1041,7 @@
                                     </div>
                                 </div>
                                 
+                                <!-- Cards de Resumo Financeiro -->
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                                     <div onClick=${() => navigateToExtrato(activeTab === 'secondary', 'INCOME')} className="bg-slate-900 p-6 rounded-[2rem] border border-slate-800 cursor-pointer hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all group">
                                         <div className="flex items-center justify-between mb-2">
@@ -960,6 +1074,7 @@
                                     </div>
                                 </div>
 
+                                <!-- Lista de Atividades Recentes -->
                                 <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-sm">
                                     <div className="px-8 py-5 border-b border-slate-800/50 flex justify-between items-center">
                                         <h3 className="text-xs font-black text-white uppercase tracking-wider">
@@ -1000,8 +1115,10 @@
                             </div>
                         ` : ''}
 
+                        <!-- Visualização: EXTRATO COMPLETO -->
                         ${activeTab === 'transactions' ? html`
                             <div className="space-y-4 animate-in">
+                                <!-- Filtros Avançados de Extrato -->
                                 <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-5 shadow-sm">
                                     <div className="flex flex-col gap-4">
                                         <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
@@ -1020,6 +1137,7 @@
                                     </div>
                                 </div>
 
+                                <!-- Grade de Transações Filtradas -->
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     ${currentTransactions.length === 0 ? html`<div className="col-span-full py-20 text-center text-slate-500 font-bold uppercase text-xs tracking-[0.2em]">Sem dados para este filtro</div>` : currentTransactions.map(t => html`
                                         <div key=${t.id} className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex items-center justify-between gap-4 hover:border-slate-700 transition-all group" onClick=${() => openEdit(t)}>
@@ -1054,11 +1172,13 @@
                             </div>
                         ` : ''}
 
+                        <!-- Visualização: AJUSTES / PERFIL -->
                         ${activeTab === 'settings' ? html`
                             <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
                                 <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
                                 
                                 <div className="space-y-6">
+                                    <!-- Configurações da Conta Principal -->
                                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                                         <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                                             <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
@@ -1077,6 +1197,7 @@
                                         </div>
                                     </div>
 
+                                    <!-- Configurações da Conta Secundária -->
                                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                                         <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                                             <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
@@ -1095,6 +1216,7 @@
                                         </div>
                                     </div>
 
+                                    <!-- Preferências Globais -->
                                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                                         <h4 className="text-sm font-black text-white uppercase tracking-wider">Preferências</h4>
                                         <div className="flex items-center justify-between p-4 bg-slate-800/40 rounded-2xl border border-slate-700">
@@ -1114,6 +1236,7 @@
                                         </div>
                                     </div>
 
+                                    <!-- Sistema de Indicação -->
                                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                                         <h4 className="text-sm font-black text-white uppercase tracking-wider">Indicar App</h4>
                                         <div className="p-4 bg-slate-800/40 rounded-2xl border border-slate-700 flex flex-col gap-4">
@@ -1132,6 +1255,7 @@
                                         </div>
                                     </div>
 
+                                    <!-- Envio de Sugestões / Suporte -->
                                     <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                                         <h4 className="text-sm font-black text-white uppercase tracking-wider">Enviar Sugestão</h4>
                                         <div className="space-y-2">
@@ -1143,6 +1267,7 @@
                                         </button>
                                     </div>
 
+                                    <!-- Ações de Rodapé (Salvar, Excluir, Sair) -->
                                     <div className="pt-4 space-y-4">
                                         <button onClick=${async () => {
                                             try {
@@ -1172,12 +1297,15 @@
                         ` : ''}
                     </main>
 
+                    <!-- Selo de Produção -->
                     <div className="text-center pb-24 md:pb-10 text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>
 
+                    <!-- Botão Flutuante: Adicionar Nova Transação -->
                     <button onClick=${() => openAddTransaction(activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions))} className="fixed bottom-24 right-6 md:bottom-10 md:right-10 bg-violet-600 text-white w-16 h-16 rounded-[1.8rem] shadow-2xl flex items-center justify-center z-50 border-4 border-slate-950 active:scale-90 hover:bg-violet-500 transition-all group">
                         <i className="fas fa-plus text-xl group-hover:rotate-90 transition-transform"></i>
                     </button>
 
+                    <!-- Barra de Navegação Inferior (Mobile Only) -->
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-800 flex justify-around p-4 z-[80] shadow-2xl">
                         <button onClick=${() => setActiveTab('dashboard')} className=${`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'dashboard' ? 'text-white opacity-100 scale-110' : 'text-slate-300 opacity-60'}`}>
                             <div className="relative">
@@ -1205,6 +1333,7 @@
                 </div>`;
         };
 
+        // Renderização Final no DOM
         ReactDOM.render(html`<${App} />`, document.getElementById('root'));
     </script>
 </body>
