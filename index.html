@@ -91,6 +91,52 @@
         .transition-value {
             transition: filter 0.3s ease, opacity 0.3s ease;
         }
+
+        /* Toggle switch styling */
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 44px;
+          height: 24px;
+        }
+
+        .switch input { 
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #334155;
+          transition: .4s;
+          border-radius: 34px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
     </style>
 
     <script type="importmap">
@@ -115,7 +161,7 @@
         import { initializeApp } from "firebase/app";
         import { 
             getFirestore, doc, setDoc, getDoc, collection, 
-            addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, serverTimestamp, orderBy
+            addDoc, query, where, onSnapshot, deleteDoc, updateDoc, writeBatch, serverTimestamp, orderBy, getDocs
         } from "firebase/firestore";
 
         const html = htm.bind(React.createElement);
@@ -131,6 +177,9 @@
 
         const fbApp = initializeApp(firebaseConfig);
         const db = getFirestore(fbApp);
+
+        // Preload sound - Updated to a high-pitched bell sound
+        const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
 
         const Avatar = ({ src, size = 'md' }) => {
             const classes = { sm: 'w-8 h-8 rounded-lg', md: 'w-10 h-10 rounded-xl', lg: 'w-16 h-16 rounded-2xl' };
@@ -153,6 +202,7 @@
             const [methodFilter, setMethodFilter] = useState('ALL');
             const [keepConnected, setKeepConnected] = useState(true);
             const [showValues, setShowValues] = useState(true);
+            const [soundEnabled, setSoundEnabled] = useState(true);
             
             const [balanceMode, setBalanceMode] = useState('MONTHLY');
             const [accumStart, setAccumStart] = useState('');
@@ -192,6 +242,13 @@
 
             const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'niklaus', [user]);
 
+            const playMoneySfx = () => {
+                if (soundEnabled) {
+                    bellSound.currentTime = 0;
+                    bellSound.play().catch(e => console.log('Audio play blocked'));
+                }
+            };
+
             const startDataSync = (sid) => {
                 setLoading(true);
                 const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
@@ -207,6 +264,7 @@
                         setSecondaryName(userData.secondaryName || 'Conta 2');
                         setProfilePhoto(userData.photoURL || '');
                         setSecondaryPhoto(userData.secondaryPhotoURL || '');
+                        setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
                     } else handleLogout();
                 });
 
@@ -279,6 +337,7 @@
                                 secondaryName: 'Conta 2', 
                                 photoURL: '', 
                                 secondaryPhotoURL: '',
+                                soundEnabled: true,
                                 status: 'pending' 
                             });
                             alert("Conta criada!");
@@ -302,6 +361,44 @@
                 setUser(null);
                 setTransactions([]);
                 setLoading(false);
+            };
+
+            const handleDeleteTransaction = async (e, id) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (confirm("Deseja realmente excluir este registro?")) {
+                    try {
+                        await deleteDoc(doc(db, "transactions", id));
+                    } catch (err) {
+                        alert("Erro ao excluir registro.");
+                    }
+                }
+            };
+
+            const handleDeleteAccount = async () => {
+                if (confirm("ATENÇÃO: Isso excluirá permanentemente sua conta e todos os seus dados. Deseja continuar?")) {
+                    const sid = user.id;
+                    setLoading(true);
+                    try {
+                        const batch = writeBatch(db);
+                        const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                        const snapshot = await getDocs(q);
+                        snapshot.forEach((d) => batch.delete(d.ref));
+                        
+                        const sugQ = query(collection(db, "suggestions"), where("userId", "==", sid));
+                        const sugSnapshot = await getDocs(sugQ);
+                        sugSnapshot.forEach((d) => batch.delete(d.ref));
+
+                        batch.delete(doc(db, "users", sid));
+                        await batch.commit();
+                        alert("Conta excluída com sucesso.");
+                        handleLogout();
+                    } catch (e) {
+                        alert("Erro ao excluir conta.");
+                    } finally {
+                        setLoading(false);
+                    }
+                }
             };
 
             const changeMonth = (offset) => {
@@ -366,6 +463,7 @@
                             });
                         }
                         await batch.commit();
+                        playMoneySfx();
                     } else {
                         await addDoc(collection(db, "transactions"), { 
                             ...newTx, amount: totalAmountInput, 
@@ -373,6 +471,7 @@
                             userId: user.id,
                             createdAt: serverTimestamp()
                         });
+                        playMoneySfx();
                     }
                     setShowModal(false);
                 } catch (e) { alert("Erro ao salvar"); }
@@ -528,7 +627,7 @@
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;
 
             if (!user) return html`
-                <div className="min-h-screen flex items-center justify-center p-4 bg-slate-950">
+                <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950">
                     <div className="bg-slate-900 p-8 rounded-[1.5rem] shadow-2xl w-full max-w-[360px] border border-slate-800">
                         <div className="text-center mb-8">
                             <div className="w-12 h-12 bg-violet-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white shadow-xl rotate-3">
@@ -556,6 +655,7 @@
                             </button>
                         </form>
                     </div>
+                    <div className="mt-8 text-center text-[8px] font-black text-slate-800 uppercase tracking-[0.4em] opacity-40 animate-in">Produzido por NIKLAUS</div>
                 </div>`;
 
             const currentActiveName = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryName : profileName;
@@ -564,7 +664,7 @@
             return html`
                 <div className="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
                     ${showModal && html`
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in">
+                        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in">
                             <div className="bg-slate-900 w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-slate-800 max-h-[90vh] overflow-y-auto">
                                 <h2 className="text-xl font-black text-white mb-6">${editingId ? 'Editar' : 'Nova'} Transação</h2>
                                 <form onSubmit=${saveTransaction} className="space-y-4">
@@ -804,7 +904,7 @@
                                     </div>
                                     <div className="divide-y divide-slate-800/40">
                                         ${currentTransactions.length === 0 ? html`<div className="p-10 text-center text-slate-500 text-xs font-bold uppercase tracking-widest">Nenhuma transação encontrada</div>` : currentTransactions.slice(0, 10).map(t => html`
-                                            <div key=${t.id} className="flex items-center justify-between px-8 py-5 hover:bg-slate-800/20 cursor-pointer transition-colors" onClick=${() => openEdit(t)}>
+                                            <div key=${t.id} className="flex items-center justify-between px-8 py-5 hover:bg-slate-800/20 cursor-pointer transition-colors group" onClick=${() => openEdit(t)}>
                                                 <div className="flex items-center gap-4">
                                                     <div className=${`w-10 h-10 rounded-xl flex items-center justify-center text-xs shadow-sm ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10' : 'bg-rose-500/10 text-rose-500 border border-rose-500/10'}`}>
                                                         <i className=${t.type === 'INCOME' ? 'fas fa-arrow-up' : 'fas fa-arrow-down'}></i>
@@ -817,11 +917,16 @@
                                                         <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</span>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className=${`font-black text-sm transition-value ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'} ${showValues ? '' : 'blur-value'}`}>
-                                                        ${t.type === 'INCOME' ? '+' : '-'} R$ ${(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                    </p>
-                                                    <span className=${`text-[8px] font-black uppercase ${t.isPaid ? 'text-emerald-500/60' : 'text-slate-500'}`}>${t.isPaid ? 'Efetuado' : 'Pendente'}</span>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="text-right">
+                                                        <p className=${`font-black text-sm transition-value ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'} ${showValues ? '' : 'blur-value'}`}>
+                                                            ${t.type === 'INCOME' ? '+' : '-'} R$ ${(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </p>
+                                                        <span className=${`text-[8px] font-black uppercase ${t.isPaid ? 'text-emerald-500/60' : 'text-slate-500'}`}>${t.isPaid ? 'Efetuado' : 'Pendente'}</span>
+                                                    </div>
+                                                    <button onClick=${(e) => handleDeleteTransaction(e, t.id)} className="p-2 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/30 rounded-lg group-hover:bg-rose-500/10">
+                                                        <i className="fas fa-trash-alt text-[10px]"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         `)}
@@ -876,7 +981,7 @@
                                                     </p>
                                                     <p className="text-[8px] font-black uppercase text-slate-600">${t.isPaid ? 'Pago' : 'Pendente'}</p>
                                                 </div>
-                                                <button onClick=${(e) => { e.stopPropagation(); if(confirm("Deseja realmente excluir este registro?")) deleteDoc(doc(db, "transactions", t.id))}} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10"><i className="fas fa-trash-alt text-xs"></i></button>
+                                                <button onClick=${(e) => handleDeleteTransaction(e, t.id)} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10"><i className="fas fa-trash-alt text-xs"></i></button>
                                             </div>
                                         </div>
                                     `)}
@@ -885,7 +990,7 @@
                         ` : ''}
 
                         ${activeTab === 'settings' ? html`
-                            <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10">
+                            <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
                                 <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
                                 
                                 <div className="space-y-6">
@@ -925,6 +1030,25 @@
                                         </div>
                                     </div>
 
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
+                                        <h4 className="text-sm font-black text-white uppercase tracking-wider">Preferências</h4>
+                                        <div className="flex items-center justify-between p-4 bg-slate-800/40 rounded-2xl border border-slate-700">
+                                            <div className="flex items-center gap-3">
+                                                <div className=${`w-10 h-10 rounded-xl flex items-center justify-center ${soundEnabled ? 'text-violet-400 bg-violet-400/10' : 'text-slate-500 bg-slate-700/30'}`}>
+                                                    <i className=${`fas ${soundEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-200">Efeitos Sonoros</p>
+                                                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Sino agudo ao salvar</p>
+                                                </div>
+                                            </div>
+                                            <label className="switch">
+                                                <input type="checkbox" checked=${soundEnabled} onChange=${e => setSoundEnabled(e.target.checked)} />
+                                                <span className="slider"></span>
+                                            </label>
+                                        </div>
+                                    </div>
+
                                     <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                                         <h4 className="text-sm font-black text-white uppercase tracking-wider">Enviar Sugestão</h4>
                                         <div className="space-y-2">
@@ -934,71 +1058,7 @@
                                         <button onClick=${sendSuggestion} disabled=${sendingSuggestion || !suggestionText.trim()} className="w-full py-4 bg-slate-800 text-white font-bold rounded-2xl text-[10px] uppercase tracking-widest shadow-lg active:scale-95 disabled:opacity-50 transition-all">
                                             ${sendingSuggestion ? 'Enviando...' : 'Enviar Sugestão'}
                                         </button>
-
-                                        <div className="pt-4 space-y-3">
-                                            <h5 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Meu Histórico</h5>
-                                            <div className="space-y-3">
-                                                ${[...userSuggestions]
-                                                    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-                                                    .map(s => html`
-                                                    <div key=${s.id} className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700" onClick=${() => s.reply && markReplyAsViewed(s.id)}>
-                                                        <div className="flex justify-between items-center mb-1">
-                                                            <span className="text-[7px] font-bold text-slate-500 uppercase">${s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString() : 'Agora'}</span>
-                                                            ${s.reply && !s.replyViewed ? html`
-                                                                <span className="text-[7px] font-black text-rose-500 uppercase bg-rose-500/10 px-2 py-0.5 rounded-full animate-pulse">Novo!</span>
-                                                            ` : ''}
-                                                        </div>
-                                                        <p className="text-[10px] text-slate-300 font-medium">${s.message}</p>
-                                                        ${s.reply ? html`
-                                                            <div className="mt-3 p-3 bg-violet-600/10 rounded-xl border border-violet-500/20">
-                                                                <p className="text-[8px] font-black text-violet-400 uppercase mb-1">Resposta do Adm</p>
-                                                                <p className="text-[10px] text-violet-200 italic">${s.reply}</p>
-                                                            </div>
-                                                        ` : ''}
-                                                    </div>
-                                                `)}
-                                            </div>
-                                        </div>
                                     </div>
-
-                                    ${isAdmin ? html`
-                                        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-violet-500/30 space-y-6 shadow-xl animate-in">
-                                            <h4 className="text-sm font-black text-violet-400 uppercase tracking-wider flex items-center gap-2">
-                                                <i className="fas fa-crown text-xs"></i> Sugestões Recebidas
-                                            </h4>
-                                            <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
-                                                ${adminSuggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 font-bold text-center">Nenhuma sugestão ainda.</p>` : adminSuggestions.map(s => html`
-                                                    <div key=${s.id} className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700 relative group">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <span className="text-[8px] font-black text-violet-300 uppercase truncate max-w-[150px]">${s.userEmail}</span>
-                                                            <span className="text-[7px] font-bold text-slate-500 uppercase">${s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString() : ''}</span>
-                                                        </div>
-                                                        <p className="text-[11px] text-slate-200 leading-relaxed mb-4">${s.message}</p>
-                                                        
-                                                        <div className="space-y-2">
-                                                            <textarea 
-                                                                className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-[10px] outline-none focus:border-violet-500 transition-all resize-none min-h-[60px]" 
-                                                                placeholder="Responder..."
-                                                                value=${adminReplyText[s.id] || ''}
-                                                                onInput=${e => setAdminReplyText({ ...adminReplyText, [s.id]: e.target.value })}
-                                                            ></textarea>
-                                                            <div className="flex justify-end gap-2">
-                                                                <button onClick=${() => deleteDoc(doc(db, "suggestions", s.id))} className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"><i className="fas fa-trash-alt text-xs"></i></button>
-                                                                <button onClick=${() => sendAdminReply(s.id)} className="px-4 py-2 bg-violet-600 text-white font-black text-[9px] uppercase rounded-lg shadow-lg active:scale-95 transition-all">Enviar Resposta</button>
-                                                            </div>
-                                                        </div>
-
-                                                        ${s.reply ? html`
-                                                            <div className="mt-4 p-3 bg-slate-950/50 rounded-xl border border-emerald-500/20">
-                                                                <p className="text-[8px] font-black text-emerald-500 uppercase mb-1">Última Resposta</p>
-                                                                <p className="text-[10px] text-slate-400 italic">${s.reply}</p>
-                                                            </div>
-                                                        ` : ''}
-                                                    </div>
-                                                `)}
-                                            </div>
-                                        </div>
-                                    ` : ''}
 
                                     <div className="pt-4 space-y-4">
                                         <button onClick=${async () => {
@@ -1007,13 +1067,18 @@
                                                     appName: profileName, 
                                                     secondaryName: secondaryName, 
                                                     photoURL: profilePhoto,
-                                                    secondaryPhotoURL: secondaryPhoto
+                                                    secondaryPhotoURL: secondaryPhoto,
+                                                    soundEnabled: soundEnabled
                                                 });
                                                 alert("As configurações foram salvas com sucesso!");
                                             } catch (err) {
                                                 alert("Erro ao sincronizar dados com o servidor.");
                                             }
                                         }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
+
+                                        <button onClick=${handleDeleteAccount} className="w-full py-4 bg-rose-500/10 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/20 transition-all">
+                                            <i className="fas fa-trash-alt mr-2"></i> Excluir Minha Conta
+                                        </button>
 
                                         <button onClick=${handleLogout} className="md:hidden w-full py-4 bg-slate-800/30 text-rose-500 font-black rounded-2xl text-[9px] uppercase tracking-widest border border-rose-500/20 active:bg-rose-500/10">
                                             <i className="fas fa-sign-out-alt mr-2"></i> Encerrar Sessão
