@@ -6,8 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanças</title>
     
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8b5cf6">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Finanças">
+    
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/552/552817.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/552/552817.png">
     
@@ -34,7 +39,7 @@
         }
 
         .glass {
-            background: rgba(30, 41, 59, 0.7);
+            background: rgba(30, 41, 41, 59, 0.7);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.05);
         }
@@ -116,6 +121,14 @@
         const fbApp = initializeApp(firebaseConfig);
         const db = getFirestore(fbApp);
 
+        // Registro de Service Worker para habilitar instalação offline
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('https://cdn.jsdelivr.net/npm/workbox-sw@6.5.4/build/workbox-sw.min.js')
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+
         const App = () => {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
@@ -130,7 +143,6 @@
             
             const [balanceMode, setBalanceMode] = useState('MONTHLY');
 
-            // Filtro de período personalizado para consulta total
             const [accumStart, setAccumStart] = useState('');
             const [accumEnd, setAccumEnd] = useState('');
             const [showCustomPeriod, setShowCustomPeriod] = useState(false);
@@ -400,7 +412,7 @@
                 
                 const rows = currentTransactions.map(t => [
                     new Date(t.date).toLocaleDateString('pt-BR'), 
-                    t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments} - Total R$ ${t.totalValue?.toLocaleString('pt-BR', {minimumFractionDigits: 2})})` : ''), 
+                    t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments} • Total R$ ${t.totalValue?.toLocaleString('pt-BR', {minimumFractionDigits: 2})})` : ''), 
                     t.method || '-', 
                     t.isPaid ? 'Sim' : 'Não',
                     `R$ ${t.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
