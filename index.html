@@ -677,7 +677,7 @@
                         <form onSubmit=${handleAuth} className="space-y-4">
                             <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 tracking-widest">E-mail ou Usuário</label>
-                                <input type="text" required placeholder="Digite aqui..." className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white focus:ring-violet-500 transition-all" value=${email} onInput=${e => setEmail(e.target.value)} />
+                                <input type="text" required placeholder="E-mail utilizado na compra" className="w-full p-4 bg-slate-800 border-0 rounded-xl outline-none ring-1 ring-slate-700 text-white focus:ring-violet-500 transition-all" value=${email} onInput=${e => setEmail(e.target.value)} />
                             </div>
                             
                             ${!isRecovering && html`
