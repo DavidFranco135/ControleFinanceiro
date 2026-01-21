@@ -178,8 +178,9 @@
         const fbApp = initializeApp(firebaseConfig);
         const db = getFirestore(fbApp);
 
-        // Preload sound - Updated to a high-pitched bell sound
+        // Preload sounds
         const bellSound = new Audio('https://assets.mixkit.co/active_storage/sfx/3005/3005-preview.mp3');
+        const trashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/1474/1474-preview.mp3');
 
         const Avatar = ({ src, size = 'md' }) => {
             const classes = { sm: 'w-8 h-8 rounded-lg', md: 'w-10 h-10 rounded-xl', lg: 'w-16 h-16 rounded-2xl' };
@@ -246,6 +247,13 @@
                 if (soundEnabled) {
                     bellSound.currentTime = 0;
                     bellSound.play().catch(e => console.log('Audio play blocked'));
+                }
+            };
+
+            const playTrashSfx = () => {
+                if (soundEnabled) {
+                    trashSound.currentTime = 0;
+                    trashSound.play().catch(e => console.log('Audio play blocked'));
                 }
             };
 
@@ -348,7 +356,7 @@
                                 const storage = keepConnected ? localStorage : sessionStorage;
                                 storage.setItem('belaju_sid', safeId);
                                 startDataSync(safeId);
-                            } else alert("Acesso restrito.");
+                            } else alert("Acesso restrito, efetue o pagamento para usar o App.");
                         } else alert("Dados inválidos");
                     }
                 } catch (err) { alert("Erro de conexão"); }
@@ -369,6 +377,7 @@
                 if (confirm("Deseja realmente excluir este registro?")) {
                     try {
                         await deleteDoc(doc(db, "transactions", id));
+                        playTrashSfx();
                     } catch (err) {
                         alert("Erro ao excluir registro.");
                     }
@@ -391,6 +400,7 @@
 
                         batch.delete(doc(db, "users", sid));
                         await batch.commit();
+                        playTrashSfx();
                         alert("Conta excluída com sucesso.");
                         handleLogout();
                     } catch (e) {
