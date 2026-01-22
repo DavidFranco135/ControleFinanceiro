@@ -1,57 +1,11 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+This Serverless Function has crashed.
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
-  authDomain: "planilha-fina.firebaseapp.com",
-  projectId: "planilha-fina",
-  storageBucket: "planilha-fina.appspot.com",
-  messagingSenderId: "288466007894",
-  appId: "1:288466007894:web:e917cc6eeac421671188f7"
-};
+Your connection is working correctly.
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
+Vercel is working correctly.
 
-export default async function handler(req, res) {
-  try {
-    if (req.method !== "POST") {
-      return res.status(200).json({ ok: true, message: "Webhook online" });
-    }
+500: INTERNAL_SERVER_ERROR
+Code: FUNCTION_INVOCATION_FAILED
+ID: gru1::pcwch-1769095688171-05c994b7c4d3
 
-    const data = req.body;
-
-    console.log("WEBHOOK DATA:", JSON.stringify(data, null, 2));
-
-    const status = data?.order?.order_status;
-    const email  = data?.order?.Customer?.email;
-
-    if (!status || !email) {
-      return res.status(400).json({ error: "Payload inválido" });
-    }
-
-    if (status === "paid") {
-      await setDoc(doc(db, "usuarios", email), {
-        email,
-        status: "paid",
-        origem: "kiwify",
-        produto: data.order.Product.product_name,
-        order_id: data.order.order_id,
-        data_pagamento: new Date().toISOString()
-      }, { merge: true });
-    }
-
-    if (status === "refunded") {
-      await setDoc(doc(db, "usuarios", email), {
-        status: "refunded"
-      }, { merge: true });
-    }
-
-    return res.status(200).json({ ok: true });
-
-  } catch (err) {
-    console.error("WEBHOOK ERROR:", err);
-    return res.status(500).json({ error: "Erro interno" });
-  }
-}
-
+If you are a visitor, contact the website owner or try again later.
