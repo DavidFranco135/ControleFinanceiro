@@ -46,4 +46,38 @@ export async function POST(request) {
 
     const db = admin.firestore();
 
-    // ✅ acha o usuário
+    // ✅ acha o usuário na coleção users pelo email
+    const snap = await db
+      .collection("users")
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return NextResponse.json(
+        { error: "Usuário não encontrado no Firestore com esse email", email },
+        { status: 404 }
+      );
+    }
+
+    const userDoc = snap.docs[0];
+
+    // ✅ atualiza exatamente como seu APP espera
+    await userDoc.ref.set(
+      {
+        status: "paid",
+        paidAt: admin.firestore.FieldValue.serverTimestamp(),
+        kiwifyOrderId: data?.order?.order_id,
+      },
+      { merge: true }
+    );
+
+    return NextResponse.json(
+      { ok: true, released: true, userId: userDoc.id },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("❌ Erro no webhook:", err);
+    return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+  }
+}
