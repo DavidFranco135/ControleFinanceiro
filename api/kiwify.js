@@ -1,34 +1,23 @@
-// Este arquivo deve ser colocado na pasta /api/ do seu projeto Vercel (ex: api/webhook.js)
-// Ele usa a Firebase Admin SDK para atualizar o status do usuário.
+// api/kiwify.js
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 
-/*
-  Como configurar:
-  1. No Firebase Console -> Configurações do Projeto -> Contas de Serviço -> Gerar nova chave privada.
-  2. Adicione as variáveis de ambiente no Vercel com os dados do JSON baixado.
-*/
-
-const admin = require('firebase-admin');
-
-if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        })
-    });
+// ATENÇÃO: Você precisará gerar uma "Chave de Conta de Serviço" no console do Firebase
+// e configurar como Variável de Ambiente no Vercel.
+if (!initializeApp.length) {
+    initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).send('Method Not Allowed');
     }
 
-    const { order_status, customer } = req.body;
+    const { customer, order_status } = req.body;
 
-    // Verifica se o pagamento foi aprovado
+    // Se o status da ordem for 'paid' (pago)
     if (order_status === 'paid' || order_status === 'completed') {
         const email = customer.email.toLowerCase();
         const safeId = email.replace(/[^a-z0-9]/g, '_');
@@ -38,28 +27,28 @@ module.exports = async (req, res) => {
             const userDoc = await userRef.get();
 
             if (userDoc.exists) {
-                // Atualiza o status do usuário existente
+                // Atualiza usuário existente para pago
                 await userRef.update({ status: 'paid' });
             } else {
-                // Se o usuário não existe, cria ele já como pago
-                // Ele poderá acessar usando o e-mail como senha inicial se você quiser
+                // Se o usuário ainda não existir, cria ele já como pago
+                // Ele usará o e-mail como senha temporária ou você pode definir uma padrão
                 await userRef.set({
                     email: email,
-                    password: email, 
+                    password: email, // Senha inicial é o email dele
                     status: 'paid',
                     appName: 'Meu Perfil',
                     secondaryName: 'Conta 2',
-                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: new Date()
                 });
             }
 
-            console.log(`Usuário ${email} ativado com sucesso.`);
-            return res.status(200).json({ success: true, message: 'Usuário ativado' });
+            console.log(`Usuário ${email} ativado com sucesso!`);
+            return res.status(200).send('User Activated');
         } catch (error) {
-            console.error('Erro no Webhook:', error);
-            return res.status(500).json({ error: 'Erro interno ao processar ativação' });
+            console.error('Erro ao ativar usuário:', error);
+            return res.status(500).send('Internal Error');
         }
     }
 
     return res.status(200).send('OK');
-};
+}
