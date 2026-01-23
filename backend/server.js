@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import admin from "firebase-admin";
-import kiwifyWebhook from "./kiwify-webhook.js"; // seu webhook
+app.post("/kiwify-webhook", kiwifyWebhook); // seu webhook
 
 const app = express();
 app.use(cors());
