@@ -634,9 +634,9 @@
 
                     const response = await ai.models.generateContent({
                         model: "gemini-3-flash-preview",
-                        contents: `Com base nesses dados financeiros, dê 3 dicas do Niklaus para melhorar meu saldo e organização: ${summary}`,
+                        contents: `Com base nesses dados financeiros, dê 3 dicas estratégicas do Niklaus para melhorar meu saldo e organização: ${summary}`,
                         config: {
-                            systemInstruction: "Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador e profissional.",
+                            systemInstruction: "Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador, profissional e use emojis.",
                         }
                     });
 
@@ -647,7 +647,7 @@
                     }
                 } catch (err) {
                     console.error("Erro na IA:", err);
-                    setAiAdvice("Dicas do Niklaus para o seu momento:\n\n1. Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.\n2. Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.\n3. O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.");
+                    setAiAdvice("Dicas do Niklaus para o seu momento:\n\n1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.\n2. 📈 Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.\n3. 🚀 O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.");
                 } finally {
                     setAiLoading(false);
                 }
