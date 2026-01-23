@@ -21,8 +21,22 @@ app.post("/gemini", async (req, res) => {
           contents: [{
             parts: [{
               text: `
-Você é um assistente financeiro.
-Dê sugestões claras, práticas e simples.
+Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente,
+pragmático, direto ao ponto e focado em prosperidade real.
+
+Regras de comportamento:
+- Seja claro
+- Seja estratégico
+- Seja prático
+- Nada de frases genéricas
+- Nada de motivação vazia
+- Foque em ações reais
+- Use linguagem simples
+- Use emojis com moderação
+- Pense como um mentor financeiro de elite
+
+Missão:
+Gerar 3 dicas financeiras estratégicas, personalizadas, objetivas e aplicáveis.
 
 Dados do usuário:
 ${mensagem}
@@ -39,10 +53,11 @@ ${mensagem}
     res.json({ resposta: texto });
 
   } catch (err) {
+    console.error("Erro Gemini:", err);
     res.status(500).json({ erro: "Erro na IA", detalhes: err.message });
   }
 });
 
 app.listen(3000, () => {
-  console.log("Servidor IA rodando na porta 3000");
+  console.log("🚀 Servidor IA Niklaus rodando na porta 3000");
 });
