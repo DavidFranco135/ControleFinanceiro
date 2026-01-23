@@ -622,8 +622,15 @@
                 setAiAdvice('');
 
                 try {
-                    // Inicialização seguindo diretrizes: const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
-                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+                    // Verificação segura de process.env para evitar erro de referência no browser puro
+                    const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : '';
+                    if (!apiKey) {
+                        setAiAdvice("Erro: Chave de API não configurada corretamente. Verifique as configurações de ambiente.");
+                        setAiLoading(false);
+                        return;
+                    }
+
+                    const ai = new GoogleGenAI({ apiKey });
                     
                     const summary = `
                         Resumo Financeiro do Usuário:
@@ -633,7 +640,6 @@
                         Principais transações recentes: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
                     `;
 
-                    // Uso de ai.models.generateContent com gemini-3-flash-preview conforme diretrizes
                     const response = await ai.models.generateContent({
                         model: "gemini-3-flash-preview",
                         contents: `Com base nesses dados financeiros, aja como um mentor de finanças experiente e me dê 3 conselhos práticos para melhorar meu saldo e organização: ${summary}`,
@@ -642,7 +648,11 @@
                         }
                     });
 
-                    setAiAdvice(response.text);
+                    if (response && response.text) {
+                        setAiAdvice(response.text);
+                    } else {
+                        throw new Error("Resposta vazia da IA");
+                    }
                 } catch (err) {
                     console.error("Erro na IA:", err);
                     setAiAdvice("Desculpe, não consegui analisar seus dados agora. Verifique se possui transações cadastradas ou tente novamente em alguns instantes.");
@@ -825,20 +835,23 @@
 
             // Efeito para renderizar gráficos
             useEffect(() => {
-                if (activeTab === 'analytics' && (totals.inc > 0 || totals.exp > 0)) {
+                if (activeTab === 'analytics') {
                     const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
                     const ctxBar = document.getElementById('analyticsBarChart');
                     
                     if (ctxDoughnut) {
                         if (doughnutChartRef.current) doughnutChartRef.current.destroy();
                         
+                        // Garante que se ambos forem zero, o gráfico não exploda (mostra um placeholder cinza se desejar, mas aqui mantemos o original)
+                        const hasData = totals.inc > 0 || totals.exp > 0;
+
                         doughnutChartRef.current = new Chart(ctxDoughnut, {
                             type: 'doughnut',
                             data: {
                                 labels: ['Entradas', 'Saídas'],
                                 datasets: [{
-                                    data: [totals.inc, totals.exp],
-                                    backgroundColor: ['#10b981', '#f43f5e'],
+                                    data: hasData ? [totals.inc, totals.exp] : [1, 1], // Placeholder se vazio
+                                    backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
                                     hoverOffset: 12,
                                     borderWidth: 0,
                                     borderRadius: 5
@@ -849,6 +862,7 @@
                                 cutout: '70%',
                                 plugins: {
                                     legend: {
+                                        display: hasData,
                                         position: 'bottom',
                                         labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
                                     }
@@ -1443,7 +1457,7 @@
                                         <!-- MUDANÇA SOLICITADA: 'Média Transação' alterada para Insights IA -->
                                         <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
                                             <span className="text-[9px] font-black text-violet-500 uppercase">Insights IA</span>
-                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors">CONSULTAR <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
+                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase">Consultar IA <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
                                         </div>
                                     </div>
                                 </div>
