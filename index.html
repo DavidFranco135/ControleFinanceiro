@@ -615,43 +615,55 @@
             /**
              * Lógica de consulta à IA (Gemini)
              */
-            const generateAIAdvice = async () => {
-                if (aiLoading) return;
-                setAiLoading(true);
-                setShowAiModal(true);
-                setAiAdvice('');
+           const generateAIAdvice = async () => {
+    if (aiLoading) return;
+    setAiLoading(true);
+    setShowAiModal(true);
+    setAiAdvice('');
 
-                try {
-                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                    
-                    const summary = `
-                        Resumo Financeiro do Usuário:
-                        Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-                        Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-                        Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
-                        Principais transações recentes: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
-                    `;
+    try {
 
-                    const response = await ai.models.generateContent({
-                        model: "gemini-3-flash-preview",
-                        contents: `Com base nesses dados financeiros, dê 3 dicas estratégicas do Niklaus para melhorar meu saldo e organização: ${summary}`,
-                        config: {
-                            systemInstruction: "Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador, profissional e use emojis.",
-                        }
-                    });
+        const summary = `
+Resumo Financeiro do Usuário:
+Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
+Principais transações recentes:
+${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
+        `;
 
-                    if (response && response.text) {
-                        setAiAdvice(response.text);
-                    } else {
-                        throw new Error("Resposta vazia da IA");
-                    }
-                } catch (err) {
-                    console.error("Erro na IA:", err);
-                    setAiAdvice("Dicas do Niklaus para o seu momento:\n\n1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.\n2. 📈 Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.\n3. 🚀 O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.");
-                } finally {
-                    setAiLoading(false);
-                }
-            };
+        const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                mensagem: summary
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.resposta) {
+            setAiAdvice(data.resposta);
+        } else {
+            throw new Error("Resposta vazia da IA");
+        }
+
+    } catch (err) {
+        console.error("Erro na IA:", err);
+        setAiAdvice(
+`Dicas do Niklaus para o seu momento:
+
+1. 💸 Corte vazamentos invisíveis: pequenos gastos recorrentes estão corroendo seu saldo.
+2. 📈 Automatize sua prosperidade: guarde antes de gastar.
+3. 🚀 Foque em gerar ativos, não apenas renda: renda paga contas, ativos constroem riqueza.`
+        );
+    } finally {
+        setAiLoading(false);
+    }
+};
+
 
             /**
              * Upload de foto de perfil (conversão para base64)
