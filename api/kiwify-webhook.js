@@ -20,8 +20,8 @@ export default async function handler(req, res) {
 
     const email =
       data?.order?.Customer?.email ||
-      data?.order?.customer?.email ||
       data?.Customer?.email ||
+      data?.order?.customer?.email ||
       data?.customer?.email ||
       null;
 
@@ -32,8 +32,12 @@ export default async function handler(req, res) {
 
     const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
 
-    // 👉 AQUI ESTÁ O CAMPO CERTO
-    const kiwifyStatus = data?.order?.order_status || "";
+    // ✅ AQUI: suporta os 2 formatos da Kiwify
+    const kiwifyStatus =
+      data?.order?.order_status ||
+      data?.order_status ||
+      data?.webhook_event_type ||
+      "";
 
     let status = "pending";
 
@@ -62,6 +66,7 @@ export default async function handler(req, res) {
         status,
         paid: status === "paid",
         pending: status !== "paid",
+        kiwifyStatus,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
