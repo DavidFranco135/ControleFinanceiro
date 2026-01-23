@@ -10,19 +10,15 @@ if (!admin.apps.length) {
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Método não permitido" });
-    }
-
-    const data = req.body;
+    const data = req.body?.order || req.body;
 
     console.log("Webhook recebido:", JSON.stringify(data, null, 2));
 
     const email =
-      data?.order?.Customer?.email ||
       data?.Customer?.email ||
-      data?.order?.customer?.email ||
       data?.customer?.email ||
+      data?.buyer?.email ||
+      data?.order?.Customer?.email ||
       null;
 
     if (!email) {
@@ -30,60 +26,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Email não encontrado no webhook" });
     }
 
-    const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
+    const orderStatus = data.order_status;
+    let appStatus = "pending";
 
-    // ✅ AQUI: suporta os 2 formatos da Kiwify
-    const kiwifyStatus =
-      data?.order?.order_status ||
-      data?.order_status ||
-      data?.webhook_event_type ||
-      "";
-
-    let status = "pending";
-
-    if (
-      kiwifyStatus === "paid" ||
-      kiwifyStatus === "approved" ||
-      kiwifyStatus === "order_approved"
-    ) {
-      status = "paid";
+    if (orderStatus === "paid" || orderStatus === "approved") {
+      appStatus = "paid";
     }
 
     if (
-      kiwifyStatus === "refunded" ||
-      kiwifyStatus === "refund_requested" ||
-      kiwifyStatus === "chargeback" ||
-      kiwifyStatus === "order_refunded"
+      orderStatus === "refunded" ||
+      orderStatus === "refund_requested" ||
+      orderStatus === "chargeback"
     ) {
-      status = "pending";
+      appStatus = "blocked";
     }
 
     const db = admin.firestore();
 
-    await db.collection("users").doc(safeId).set(
+    await db.collection("users").doc(email.toLowerCase()).set(
       {
-        email,
-        status,
-        paid: status === "paid",
-        pending: status !== "paid",
-        kiwifyStatus,
+        status: appStatus,
+        paid: appStatus === "paid",
+        pending: appStatus !== "paid",
+        lastOrderStatus: orderStatus,
         updatedAt: new Date().toISOString(),
       },
       { merge: true }
     );
 
     console.log(
-      "Status atualizado:",
-      email,
-      "=> kiwify:",
-      kiwifyStatus,
-      "=> app:",
-      status
+      `Status atualizado: ${email} => kiwify: ${orderStatus} => app: ${appStatus}`
     );
 
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error("Erro no webhook:", err);
-    return res.status(500).json({ error: "Erro interno" });
+    return res.status(500).json({ error: "Erro interno no webhook" });
   }
 }
