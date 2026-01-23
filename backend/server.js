@@ -6,60 +6,60 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const GEMINI_KEY = process.env.GEMINI_KEY;
+const GEMINI_KEY = process.env.GEMINI_KEY; // variável no Render
 
 app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1:generateMessage?key=${GEMINI_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `
-Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente,
-pragmático, direto ao ponto e focado em prosperidade real.
-
-Regras:
-- Claro
-- Estratégico
-- Prático
-- Sem frases genéricas
-- Sem motivação vazia
-- Ações reais
-- Linguagem simples
-- Emojis moderados
-
-Missão:
-Gerar 3 dicas financeiras estratégicas, objetivas e aplicáveis.
-
-Dados do usuário:
-${mensagem}
-              `
-            }]
-          }]
+          prompt: {
+            messages: [
+              {
+                role: "system",
+                content: [
+                  {
+                    type: "text",
+                    text: `
+Você é Niklaus, mentor financeiro brasileiro, direto, pragmático e experiente.
+Gere 3 dicas financeiras estratégicas, objetivas e aplicáveis.
+Use linguagem simples, tom encorajador e emojis moderados.
+Responda **somente em português**.
+                  `
+                  }
+                ]
+              },
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "text",
+                    text: mensagem
+                  }
+                ]
+              }
+            ]
+          }
         })
       }
     );
 
     const data = await response.json();
 
-    // 👇 LOG REAL PRA DEBUG
+    // 👀 Log para debug
     console.log("Resposta bruta da Gemini:", JSON.stringify(data, null, 2));
 
-    let texto = 
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      data?.candidates?.[0]?.output_text ||
+    // Parse robusto para diferentes formatos de resposta
+    const texto =
+      data?.candidates?.[0]?.content?.[0]?.text ||
+      data?.output?.[0]?.content?.[0]?.text ||
       data?.text ||
-      null;
-
-    if (!texto) {
-      texto = "⚠️ IA não retornou texto válido. Estrutura inesperada da resposta.";
-    }
+      "⚠️ IA não retornou texto válido";
 
     res.json({ resposta: texto });
 
@@ -69,6 +69,8 @@ ${mensagem}
   }
 });
 
-app.listen(3000, () => {
-  console.log("🚀 Servidor IA Niklaus rodando na porta 3000");
+// Porta do Render normalmente é 10000+, mas 3000 funciona local
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor IA Niklaus rodando na porta ${PORT}`);
 });
