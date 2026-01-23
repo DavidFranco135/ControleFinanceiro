@@ -1,51 +1,29 @@
 import express from "express";
 import cors from "cors";
-import GeminiAI from "gemini-ai-sdk"; // <-- CORRIGIDO
+import admin from "firebase-admin";
+import kiwifyHandler from "./api/kiwify-webhook.js"; // seu webhook
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const AI_KEY = process.env.GEMINI_API_KEY;
+// Inicializa Firebase
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(
+      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+    ),
+  });
+}
 
+// Rota webhook
+app.post("/kiwify-webhook", kiwifyHandler);
+
+// Aqui você pode adicionar rota para a IA Niklaus se quiser
 app.post("/ai", async (req, res) => {
-  const { totals, currentTransactions, userQuestion } = req.body;
-
-  try {
-    const ai = new GeminiAI({ apiKey: AI_KEY }); // <-- CORRIGIDO
-
-    const summary = `
-Resumo Financeiro do Usuário:
-Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
-Principais transações recentes: ${currentTransactions
-      .slice(0, 5)
-      .map(t => `${t.description} (R$ ${t.amount})`)
-      .join(', ')}
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Com base nesses dados financeiros, responda à seguinte pergunta de forma prática e motivadora: ${userQuestion}\n${summary}`,
-      config: {
-        systemInstruction: "Você é Niklaus, mentor financeiro brasileiro, direto e motivador. Use emojis e linguagem clara."
-      }
-    });
-
-    res.json({ reply: response.text || "Dicas do Niklaus padrão (fallback)." });
-
-  } catch (err) {
-    console.error("Erro na IA:", err);
-    res.json({ reply: `
-Dicas do Niklaus padrão:
-
-1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos desnecessários.
-2. 📈 Pague-se primeiro: reserve uma quantia da renda para sua reserva.
-3. 🚀 O segredo não é quanto você ganha, mas quanto mantém e multiplica.
-    `});
-  }
+  // Código da Gemini AI aqui
+  res.json({ reply: "Resposta da IA..." });
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Servidor rodando na porta ${port}`));
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`Backend rodando na porta ${PORT}`));
