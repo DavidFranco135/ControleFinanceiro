@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import admin from "firebase-admin";
-app.post("/kiwify-webhook", kiwifyWebhook); // seu webhook
+import kiwifyWebhook from "./kiwify-webhook.js"; // seu webhook
 
 const app = express();
 app.use(cors());
@@ -17,15 +17,13 @@ if (!admin.apps.length) {
 }
 
 // Rota webhook do Kiwify
-app.post("/kiwify-webhook", kiwifyHandler);
+app.post("/kiwify-webhook", kiwifyWebhook);
 
-// Rota da IA (exemplo)
+// Rota da IA
 app.post("/ai", async (req, res) => {
   try {
     const { totals, currentTransactions, userQuestion } = req.body;
-    
-    // Aqui você chamaria a Gemini AI
-    // Exemplo de resposta fixa por enquanto
+
     res.json({
       reply: "Olá! Aqui vão 3 dicas do Niklaus para suas finanças..."
     });
