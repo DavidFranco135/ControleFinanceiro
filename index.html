@@ -309,10 +309,13 @@
                     if (s.exists()) {
                         const userData = { id: s.id, ...s.data() };
                         // Bloqueio de segurança para usuários não pagos (exceto adm)
-                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
-                             alert("Acesso Bloqueado.");
-                             handleLogout();
-                             return;
+                        const status = (userData.status || "").toLowerCase().trim();
+                        if (userData.email.toLowerCase() !== 'niklaus' && status !== 'paid') {
+                            alert("Acesso Bloqueado.");
+                            handleLogout();
+                            return
+                        }
+
                         }
                         setUser(userData);
                         setProfileName(userData.appName || 'Meu Perfil');
