@@ -1,33 +1,28 @@
 import admin from "firebase-admin";
 
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+  });
+}
+
 export default async function handler(req, res) {
-  try {
-    if (!process.env.FIREBASE_PRIVATE_KEY_BASE64) {
-      throw new Error("ENV FIREBASE_PRIVATE_KEY_BASE64 não existe");
-    }
+  const data = req.body;
 
-    if (!admin.apps.length) {
-      const decodedKey = Buffer.from(
-        process.env.FIREBASE_PRIVATE_KEY_BASE64,
-        "base64"
-      ).toString("utf-8");
+  // Email do comprador vindo do Kiwify
+  const email = data?.customer?.email;
 
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: "planilha-fina",
-          clientEmail: "firebase-adminsdk-fbsvc@planilha-fina.iam.gserviceaccount.com",
-          privateKey: decodedKey,
-        }),
-      });
-    }
-
-    const data = req.body;
-    console.log("WEBHOOK DATA:", JSON.stringify(data, null, 2));
-
-    return res.status(200).json({ ok: true });
-
-  } catch (error) {
-    console.error("ERRO WEBHOOK:", error);
-    return res.status(500).json({ error: "Erro interno no webhook" });
+  if (!email) {
+    return res.status(400).json({ error: "Email não encontrado no webhook" });
   }
+
+  const db = admin.firestore();
+
+  await db.collection("users").doc(email).set({
+    access: true,
+    paid: true,
+    paidAt: new Date().toISOString(),
+  }, { merge: true });
+
+  return res.status(200).json({ ok: true });
 }
