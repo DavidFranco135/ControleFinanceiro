@@ -16,13 +16,23 @@ if (!admin.apps.length) {
   });
 }
 
-// Rota webhook
+// Rota webhook do Kiwify
 app.post("/kiwify-webhook", kiwifyHandler);
 
-// Aqui você pode adicionar rota para a IA Niklaus se quiser
+// Rota da IA (exemplo)
 app.post("/ai", async (req, res) => {
-  // Código da Gemini AI aqui
-  res.json({ reply: "Resposta da IA..." });
+  try {
+    const { totals, currentTransactions, userQuestion } = req.body;
+    
+    // Aqui você chamaria a Gemini AI
+    // Exemplo de resposta fixa por enquanto
+    res.json({
+      reply: "Olá! Aqui vão 3 dicas do Niklaus para suas finanças..."
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ reply: "Erro interno da IA" });
+  }
 });
 
 const PORT = process.env.PORT || 4000;
