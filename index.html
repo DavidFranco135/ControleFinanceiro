@@ -418,14 +418,16 @@
                                 photoURL: '', 
                                 secondaryPhotoURL: '',
                                 soundEnabled: true,
-                                status: 'pending' 
+                                paid: false,
+                                pending: true
+
                             });
                             alert("Conta criada!");
                         }
                     } else {
                         // Caso: Login convencional
                         if (s.exists() && s.data().password === pass) {
-                            if (s.data().status === 'paid' || email.toLowerCase() === 'niklaus') {
+                            if ((s.data().paid === true && s.data().pending === false) || email.toLowerCase() === 'niklaus') {
                                 const storage = keepConnected ? localStorage : sessionStorage;
                                 storage.setItem('belaju_sid', safeId);
                                 startDataSync(safeId);
