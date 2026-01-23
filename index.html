@@ -615,41 +615,50 @@
             /**
              * Lógica de consulta à IA (Gemini)
              */
-            /**
- * Lógica de consulta à IA (Gemini) para responder como Niklaus
+   /**
+ * Lógica de consulta à IA (Niklaus)
  */
-// No seu frontend (React, Vue ou Vanilla JS)
 const generateAIAdvice = async () => {
-  if (aiLoading) return;
-  setAiLoading(true);
-  setShowAiModal(true);
-  setAiAdvice('');
+    if (aiLoading) return; // evita múltiplas chamadas
+    setAiLoading(true);
+    setShowAiModal(true);
+    setAiAdvice('');
 
-  try {
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userQuestion: "Como posso melhorar minhas finanças?", // ou pegar de input do usuário
-        totals,
-        currentTransactions
-      })
-    });
+    try {
+        // Chamada ao backend no Render
+        const res = await fetch("https://controlefinanceiro-naip.onrender.com/ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                totals, 
+                currentTransactions, 
+                userQuestion: "Como posso melhorar minhas finanças?"
+            })
+        });
 
-    const data = await res.json();
-    setAiAdvice(data.reply);
+        const data = await res.json();
 
-  } catch (err) {
-    console.error("Erro ao chamar IA:", err);
-    setAiAdvice(`Dicas do Niklaus para o seu momento:
+        // Atualiza a interface com a resposta da IA
+        if (data.reply) {
+            setAiAdvice(data.reply);
+        } else {
+            setAiAdvice("Dicas do Niklaus padrão (fallback).");
+        }
 
-1. 💸 Estanque os pequenos vazamentos...
-2. 📈 Pague-se primeiro...
-3. 🚀 O segredo não é o quanto você ganha, mas o quanto mantém.`);
-  } finally {
-    setAiLoading(false);
-  }
+    } catch (err) {
+        console.error("Erro na IA:", err);
+        setAiAdvice(`
+Dicas do Niklaus padrão:
+
+1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos desnecessários.
+2. 📈 Pague-se primeiro: reserve uma quantia da renda para sua reserva.
+3. 🚀 O segredo não é quanto você ganha, mas quanto mantém e multiplica.
+        `);
+    } finally {
+        setAiLoading(false);
+    }
 };
+
 
 
 
