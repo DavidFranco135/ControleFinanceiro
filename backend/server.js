@@ -39,7 +39,8 @@ app.post("/ai", async (req, res) => {
   try {
     const { totals, currentTransactions, userQuestion } = req.body;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+   const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
 
     const prompt = `
 Você é o Niklaus, um assistente financeiro inteligente.
