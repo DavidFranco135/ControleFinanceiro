@@ -1,3 +1,9 @@
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 import admin from "firebase-admin";
 
 if (!admin.apps.length) {
@@ -10,15 +16,17 @@ if (!admin.apps.length) {
 
 export default async function handler(req, res) {
   try {
-    const data = req.body?.order || req.body;
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
 
+    const data = req.body;
     console.log("Webhook recebido:", JSON.stringify(data, null, 2));
 
     const email =
       data?.Customer?.email ||
       data?.customer?.email ||
       data?.buyer?.email ||
-      data?.order?.Customer?.email ||
       null;
 
     if (!email) {
@@ -26,14 +34,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Email não encontrado no webhook" });
     }
 
-    const orderStatus = data.order_status;
+    const orderStatus = (data.order_status || "").toLowerCase().trim(); // garantir lowercase
     let appStatus = "pending";
 
     if (orderStatus === "paid" || orderStatus === "approved") {
       appStatus = "paid";
-    }
-
-    if (
+    } else if (
       orderStatus === "refunded" ||
       orderStatus === "refund_requested" ||
       orderStatus === "chargeback"
@@ -42,7 +48,6 @@ export default async function handler(req, res) {
     }
 
     const db = admin.firestore();
-
     await db.collection("users").doc(email.toLowerCase()).set(
       {
         status: appStatus,
