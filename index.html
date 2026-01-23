@@ -619,48 +619,42 @@
  * Lógica de consulta à IA (Niklaus)
  */
 const generateAIAdvice = async () => {
-    if (aiLoading) return; // evita múltiplas chamadas
+    if (aiLoading) return;
+
+    if (!userAiQuestion.trim()) {
+        setAiAdvice("Digite uma pergunta para o Mentor IA.");
+        return;
+    }
+
     setAiLoading(true);
-    setShowAiModal(true);
-    setAiAdvice('');
+    setAiAdvice("");
 
     try {
-        // Chamada ao backend no Render
         const res = await fetch("https://controlefinanceiro-naip.onrender.com/ai", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                totals, 
-                currentTransactions, 
-                userQuestion: "Como posso melhorar minhas finanças?"
+                totals,
+                currentTransactions,
+                userQuestion: userAiQuestion
             })
         });
 
         const data = await res.json();
 
-        // Atualiza a interface com a resposta da IA
         if (data.reply) {
             setAiAdvice(data.reply);
         } else {
-            setAiAdvice("Dicas do Niklaus padrão (fallback).");
+            setAiAdvice("Resposta vazia da IA.");
         }
 
     } catch (err) {
         console.error("Erro na IA:", err);
-        setAiAdvice(`
-Dicas do Niklaus padrão:
-
-1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos desnecessários.
-2. 📈 Pague-se primeiro: reserve uma quantia da renda para sua reserva.
-3. 🚀 O segredo não é quanto você ganha, mas quanto mantém e multiplica.
-        `);
+        setAiAdvice("Erro ao consultar a IA. Tente novamente.");
     } finally {
         setAiLoading(false);
     }
 };
-
-
-
 
 
 
