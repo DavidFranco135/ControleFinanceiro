@@ -622,6 +622,7 @@
                 setAiAdvice('');
 
                 try {
+                    // Inicialização seguindo diretrizes: const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
                     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
                     
                     const summary = `
@@ -632,6 +633,7 @@
                         Principais transações recentes: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
                     `;
 
+                    // Uso de ai.models.generateContent com gemini-3-flash-preview conforme diretrizes
                     const response = await ai.models.generateContent({
                         model: "gemini-3-flash-preview",
                         contents: `Com base nesses dados financeiros, aja como um mentor de finanças experiente e me dê 3 conselhos práticos para melhorar meu saldo e organização: ${summary}`,
@@ -823,22 +825,19 @@
 
             // Efeito para renderizar gráficos
             useEffect(() => {
-                if (activeTab === 'analytics' && transactions.length > 0) {
+                if (activeTab === 'analytics' && (totals.inc > 0 || totals.exp > 0)) {
                     const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
                     const ctxBar = document.getElementById('analyticsBarChart');
                     
                     if (ctxDoughnut) {
                         if (doughnutChartRef.current) doughnutChartRef.current.destroy();
                         
-                        const entriesVal = currentTransactions.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + (t.amount || 0), 0);
-                        const exitsVal = currentTransactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + (t.amount || 0), 0);
-
                         doughnutChartRef.current = new Chart(ctxDoughnut, {
                             type: 'doughnut',
                             data: {
                                 labels: ['Entradas', 'Saídas'],
                                 datasets: [{
-                                    data: [entriesVal, exitsVal],
+                                    data: [totals.inc, totals.exp],
                                     backgroundColor: ['#10b981', '#f43f5e'],
                                     hoverOffset: 12,
                                     borderWidth: 0,
@@ -864,10 +863,10 @@
                         const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
                         const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
                         const methodColors = {
-                            'PIX': '#10b981',      // Emerald
-                            'CREDITO': '#8b5cf6',  // Violet
-                            'DEBITO': '#0ea5e9',   // Sky Blue
-                            'DINHEIRO': '#f59e0b'  // Amber
+                            'PIX': '#10b981',
+                            'CREDITO': '#8b5cf6',
+                            'DEBITO': '#0ea5e9',
+                            'DINHEIRO': '#f59e0b'
                         };
 
                         const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
@@ -881,7 +880,7 @@
                                     {
                                         label: 'Qtd Entradas',
                                         data: incomeCounts,
-                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'), // 80% opacity
+                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'),
                                         borderColor: methods.map(m => methodColors[m]),
                                         borderWidth: 2,
                                         borderRadius: 6
@@ -889,7 +888,7 @@
                                     {
                                         label: 'Qtd Saídas',
                                         data: expenseCounts,
-                                        backgroundColor: methods.map(m => methodColors[m] + '66'), // 40% opacity
+                                        backgroundColor: methods.map(m => methodColors[m] + '66'),
                                         borderColor: methods.map(m => methodColors[m]),
                                         borderWidth: 1,
                                         borderRadius: 6,
@@ -928,7 +927,7 @@
                         });
                     }
                 }
-            }, [activeTab, currentTransactions]);
+            }, [activeTab, currentTransactions, totals]);
 
             // Tela de Carregamento Inicial
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;
@@ -1444,7 +1443,7 @@
                                         <!-- MUDANÇA SOLICITADA: 'Média Transação' alterada para Insights IA -->
                                         <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
                                             <span className="text-[9px] font-black text-violet-500 uppercase">Insights IA</span>
-                                            <p className="text-xl font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors">CONSULTAR <i className="fas fa-magic text-xs text-violet-500"></i></p>
+                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors">CONSULTAR <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
                                         </div>
                                     </div>
                                 </div>
