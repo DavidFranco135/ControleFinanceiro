@@ -9,9 +9,16 @@ if (!admin.apps.length) {
 }
 
 export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   try {
     const data = req.body;
 
+    console.log("Webhook recebido:", JSON.stringify(data, null, 2));
+
+    // Tenta pegar email em vários formatos possíveis
     const email =
       data?.Customer?.email ||
       data?.customer?.email ||
@@ -24,18 +31,40 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Email não encontrado no webhook" });
     }
 
-    const db = admin.firestore();
-await db.collection("users").doc(email).set(
-  {
-    status: "paid",        // 👈 ESSENCIAL
-    paid: true,
-    pending: false,
-    paidAt: new Date().toISOString(),
-  },
-  { merge: true }
-);
+    // Converte email para o mesmo padrão do app (safeId)
+    const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
 
-    console.log("Acesso liberado para:", email);
+    const db = admin.firestore();
+    const userRef = db.collection("users").doc(safeId);
+
+    const orderStatus = data?.order_status || data?.status || null;
+    const eventType = data?.webhook_event_type || null;
+
+    // 👉 PAGAMENTO APROVADO
+    if (orderStatus === "paid" || eventType === "order_approved") {
+      await userRef.set(
+        {
+          status: "paid",
+          paidAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      console.log("Acesso LIBERADO para:", email);
+    }
+
+    // 👉 REEMBOLSO
+    if (orderStatus === "refunded" || eventType === "order_refunded") {
+      await userRef.set(
+        {
+          status: "pending",
+          refundedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      console.log("Acesso BLOQUEADO (reembolso) para:", email);
+    }
 
     return res.status(200).json({ ok: true });
   } catch (err) {
