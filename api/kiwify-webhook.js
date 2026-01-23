@@ -12,7 +12,6 @@ export default async function handler(req, res) {
   try {
     const data = req.body;
 
-    // Agora pegando do lugar CERTO
     const email =
       data?.Customer?.email ||
       data?.customer?.email ||
@@ -29,6 +28,7 @@ export default async function handler(req, res) {
 
     await db.collection("users").doc(email).set(
       {
+        status: "approved",   // 👈 AQUI
         paid: true,
         pending: false,
         paidAt: new Date().toISOString(),
