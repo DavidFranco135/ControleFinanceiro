@@ -12,8 +12,9 @@ export default async function handler(req, res) {
   try {
     const data = req.body;
 
-    // tenta vários caminhos possíveis do Kiwify
+    // Agora pegando do lugar CERTO
     const email =
+      data?.Customer?.email ||
       data?.customer?.email ||
       data?.buyer?.email ||
       data?.order?.customer?.email ||
@@ -34,6 +35,8 @@ export default async function handler(req, res) {
       },
       { merge: true }
     );
+
+    console.log("Acesso liberado para:", email);
 
     return res.status(200).json({ ok: true });
   } catch (err) {
