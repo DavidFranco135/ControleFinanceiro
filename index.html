@@ -620,39 +620,37 @@
  */
 // No seu frontend (React, Vue ou Vanilla JS)
 const generateAIAdvice = async () => {
-    if (aiLoading) return;
-    setAiLoading(true);
-    setShowAiModal(true);
-    setAiAdvice('');
+  if (aiLoading) return;
+  setAiLoading(true);
+  setShowAiModal(true);
+  setAiAdvice('');
 
-    try {
-        // Aqui chamamos a rota backend que faz a IA responder
-        const res = await fetch('/api/ai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userQuestion: "Como posso melhorar minhas finanças este mês?", // ou pegar de um input do usuário
-                totals,               // objeto com totais do usuário
-                currentTransactions   // array com últimas transações
-            })
-        });
+  try {
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        userQuestion: "Como posso melhorar minhas finanças?", // ou pegar de input do usuário
+        totals,               // seu objeto totals já existente
+        currentTransactions   // seu array currentTransactions já existente
+      })
+    });
 
-        const data = await res.json();
-        setAiAdvice(data.reply);
+    const data = await res.json();
+    setAiAdvice(data.reply);
 
-    } catch (err) {
-        console.error("Erro ao chamar IA:", err);
-        setAiAdvice(`
-Dicas do Niklaus para o seu momento:
+  } catch (err) {
+    console.error("Erro ao chamar IA:", err);
+    setAiAdvice(`Dicas do Niklaus para o seu momento:
 
 1. 💸 Estanque os pequenos vazamentos...
 2. 📈 Pague-se primeiro...
-3. 🚀 O segredo não é o quanto você ganha, mas o quanto mantém.
-        `);
-    } finally {
-        setAiLoading(false);
-    }
+3. 🚀 O segredo não é o quanto você ganha, mas o quanto mantém.`);
+  } finally {
+    setAiLoading(false);
+  }
 };
+
 
 
 
