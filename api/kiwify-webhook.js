@@ -19,11 +19,10 @@ export default async function handler(req, res) {
     console.log("Webhook recebido:", JSON.stringify(data, null, 2));
 
     const email =
-      data?.customer?.email ||
-      data?.Customer?.email ||
-      data?.buyer?.email ||
+      data?.order?.Customer?.email ||
       data?.order?.customer?.email ||
-      data?.order?.email ||
+      data?.Customer?.email ||
+      data?.customer?.email ||
       null;
 
     if (!email) {
@@ -33,19 +32,25 @@ export default async function handler(req, res) {
 
     const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, "_");
 
-    // 👉 STATUS REAL DA KIWIFY
-    const kiwifyStatus =
-      data?.order?.status ||
-      data?.order_status ||
-      "";
+    // 👉 AQUI ESTÁ O CAMPO CERTO
+    const kiwifyStatus = data?.order?.order_status || "";
 
     let status = "pending";
 
-    if (kiwifyStatus === "paid" || kiwifyStatus === "approved") {
+    if (
+      kiwifyStatus === "paid" ||
+      kiwifyStatus === "approved" ||
+      kiwifyStatus === "order_approved"
+    ) {
       status = "paid";
     }
 
-    if (kiwifyStatus === "refunded" || kiwifyStatus === "chargeback") {
+    if (
+      kiwifyStatus === "refunded" ||
+      kiwifyStatus === "refund_requested" ||
+      kiwifyStatus === "chargeback" ||
+      kiwifyStatus === "order_refunded"
+    ) {
       status = "pending";
     }
 
@@ -62,7 +67,14 @@ export default async function handler(req, res) {
       { merge: true }
     );
 
-    console.log("Status atualizado:", email, "=>", kiwifyStatus, "=>", status);
+    console.log(
+      "Status atualizado:",
+      email,
+      "=> kiwify:",
+      kiwifyStatus,
+      "=> app:",
+      status
+    );
 
     return res.status(200).json({ ok: true });
   } catch (err) {
