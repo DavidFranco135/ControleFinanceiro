@@ -615,57 +615,70 @@
             /**
              * Lógica de consulta à IA (Gemini)
              */
-            const generateAIAdvice = async () => {
-                if (aiLoading) return;
-                setAiLoading(true);
-                setShowAiModal(true);
-                setAiAdvice('');
-
-                try {
-                    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-                    
-                    const summary = `
-                        Resumo Financeiro do Usuário:
-                        Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-                        Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-                        Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
-                        Principais transações recentes: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
-                    `;
-
-                    const response = await ai.models.generateContent({
-                        model: "gemini-3-flash-preview",
-                        contents: `Com base nesses dados financeiros, dê 3 dicas estratégicas do Niklaus para melhorar meu saldo e organização: ${summary}`,
-                        config: {
-                            systemInstruction: "Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador, profissional e use emojis.",
-                        }
-                    });
-
-                    if (response && response.text) {
-                        setAiAdvice(response.text);
-                    } else {
-                        throw new Error("Resposta vazia da IA");
-                    }
-                } catch (err) {
-                    console.error("Erro na IA:", err);
-                    setAiAdvice("Dicas do Niklaus para o seu momento:\n\n1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.\n2. 📈 Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.\n3. 🚀 O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.");
-                } finally {
-                    setAiLoading(false);
-                }
-            };
-
             /**
-             * Upload de foto de perfil (conversão para base64)
-             */
-            const handlePhotoUpload = (e, target) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    if (target === 'principal') setProfilePhoto(reader.result);
-                    else setSecondaryPhoto(reader.result);
-                };
-                reader.readAsDataURL(file);
-            };
+ * Lógica de consulta à IA (Gemini) para responder como Niklaus
+ */
+const generateAIAdvice = async () => {
+    if (aiLoading) return; // evita chamadas simultâneas
+    setAiLoading(true);
+    setShowAiModal(true);
+    setAiAdvice('');
+
+    try {
+        // Inicializa a Gemini AI com a chave segura
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        // Resumo financeiro do usuário
+        const summary = `
+Resumo Financeiro do Usuário:
+Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
+Principais transações recentes: ${currentTransactions
+            .slice(0, 5)
+            .map(t => `${t.description} (R$ ${t.amount})`)
+            .join(', ')}
+        `;
+
+        // Solicitação à IA
+        const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview", // modelo da Gemini
+            contents: `
+Com base nesses dados financeiros, dê 3 dicas estratégicas do Niklaus para melhorar meu saldo e organização:
+
+${summary}
+            `,
+            config: {
+                systemInstruction: `
+Você é Niklaus, um mentor financeiro pessoal brasileiro extremamente experiente, pragmático e direto ao ponto. 
+Suas dicas são famosas por serem eficazes e focadas em prosperidade real. Use um tom encorajador, profissional e use emojis.
+                `
+            }
+        });
+
+        // Atualiza a interface com a resposta da IA
+        if (response && response.text) {
+            setAiAdvice(response.text);
+        } else {
+            throw new Error("Resposta vazia da IA");
+        }
+
+    } catch (err) {
+        console.error("Erro na IA:", err);
+
+        // Resposta padrão caso a IA falhe
+        setAiAdvice(`
+Dicas do Niklaus para o seu momento:
+
+1. 💸 Estanque os pequenos vazamentos: revise assinaturas e gastos de 'cafezinho' que somados pesam no fim do mês.
+2. 📈 Pague-se primeiro: assim que receber, separe uma quantia para sua reserva, antes de qualquer outro gasto.
+3. 🚀 O segredo não é o quanto você ganha, mas o quanto você mantém e multiplica.
+        `);
+    } finally {
+        setAiLoading(false);
+    }
+};
+
 
             /**
              * Envio de feedback/sugestão
