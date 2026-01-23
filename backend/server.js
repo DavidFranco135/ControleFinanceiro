@@ -1,19 +1,18 @@
 import express from "express";
 import cors from "cors";
-import { GoogleGenAI } from "gemini-ai-sdk";
+import GeminiAI from "gemini-ai-sdk"; // <-- CORRIGIDO
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Pegando a chave da Gemini da variável de ambiente
 const AI_KEY = process.env.GEMINI_API_KEY;
 
 app.post("/ai", async (req, res) => {
   const { totals, currentTransactions, userQuestion } = req.body;
 
   try {
-    const ai = new GoogleGenAI({ apiKey: AI_KEY });
+    const ai = new GeminiAI({ apiKey: AI_KEY }); // <-- CORRIGIDO
 
     const summary = `
 Resumo Financeiro do Usuário:
