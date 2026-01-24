@@ -393,6 +393,26 @@
                     .filter(sug => sug.reply)
                     .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
             }, [userSuggestions]);
+            // Dentro do useEffect que monitora dados
+if (user.email === 'davidbhmg147@gmail.com') {
+    const q = query(
+        collection(db, "suggestions"), 
+        where("viewedByAdmin", "==", false)
+    );
+    
+    onSnapshot(q, (snapshot) => {
+        const newSuggestions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Aqui você atualiza o unreadCount do Admin
+        setUnreadCount(newSuggestions.length);
+        setNotifications(newSuggestions.map(s => ({
+            id: s.id,
+            type: 'SUGGESTION',
+            title: 'Nova Sugestão',
+            reply: s.text,
+            repliedAt: s.createdAt
+        })));
+    });
+}
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
