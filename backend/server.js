@@ -28,7 +28,7 @@ app.post("/gemini", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: "Você é Niklaus, mentor financeiro brasileiro. Gere 3 dicas financeiras estratégicas. Sempre se apresente pelo nome Niklaus e use o nome da pessoa se disponível."
+          content: "Você é Niklaus, mentor financeiro brasileiro. Gere 3 dicas financeiras estratégicas. Usse emojis interativos. Sempre se apresente pelo nome Niklaus e use o nome da pessoa se disponível."
         },
         { role: "user", content: mensagem }
       ],
