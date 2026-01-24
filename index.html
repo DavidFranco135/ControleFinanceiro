@@ -401,7 +401,7 @@
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
-    // 1. Validação básica para evitar erros de campo vazio
+    // Validação inicial
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
@@ -410,78 +410,81 @@ const handleAuth = async (e) => {
     setAuthLoading(true);
     
     try {
-        const auth = getAuth(); // Inicializa o serviço de autenticação
+        // 'auth' e 'db' já foram inicializados no topo do script
         const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-        const ref = doc(db, "users", safeId);
-        const s = await getDoc(ref);
+        const userRef = doc(db, "users", safeId);
+        const userSnap = await getDoc(userRef);
 
-        // --- CASO: RECUPERAÇÃO DE SENHA ---
+        // --- MODO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
             auth.languageCode = 'pt';
-            // O Firebase só envia se o e-mail existir no 'Authentication'
             await sendPasswordResetEmail(auth, email.trim());
             alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
         } 
         
-        // --- CASO: CADASTRO DE NOVO USUÁRIO ---
+        // --- MODO: CADASTRO ---
         else if (isRegistering) {
-            if (s.exists()) {
-                alert("Este e-mail já está cadastrado no banco de dados.");
+            if (userSnap.exists()) {
+                alert("Este e-mail já está cadastrado.");
             } else {
-                // PRIMEIRO: Cria no Firebase Authentication
-                const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-                
-                // SEGUNDO: Cria o perfil no Firestore
-                await setDoc(ref, { 
-                    uid: userCredential.user.uid,
-                    email: email.trim(), 
-                    password: pass, 
-                    appName: 'Meu Perfil', 
+                // Cria no Authentication
+                const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+                // Salva no Firestore
+                await setDoc(userRef, {
+                    uid: cred.user.uid,
+                    email: email.trim(),
+                    password: pass, // Senha em texto para o seu sistema de login legado
                     status: 'pending',
                     paid: false,
-                    createdAt: new Date()
+                    createdAt: serverTimestamp()
                 });
-                
                 alert("Conta criada com sucesso!");
                 setIsRegistering(false);
             }
         } 
         
-        // --- CASO: LOGIN CONVENCIONAL ---
+        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
         else {
-            if (s.exists() && s.data().password === pass) {
-                const userData = s.data();
+            try {
+                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
+                await signInWithEmailAndPassword(auth, email.trim(), pass);
                 
-                // Validação de pagamento ou admin
-                if (userData.status === 'paid' || userData.paid === true || email.toLowerCase() === 'niklaus') {
-                    const storage = keepConnected ? localStorage : sessionStorage;
-                    storage.setItem('belaju_sid', safeId);
-                    
-                    // Inicia a sincronização se a função existir
-                    if (typeof startDataSync === 'function') {
-                        startDataSync(safeId);
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+
+                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
+                    if (userData.password !== pass) {
+                        await updateDoc(userRef, { password: pass });
+                        console.log("Senha sincronizada no banco de dados.");
+                    }
+
+                    // 3. Verificação de Acesso (Pagamento ou Admin)
+                    if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
+                        const storage = keepConnected ? localStorage : sessionStorage;
+                        storage.setItem('belaju_sid', safeId);
+                        
+                        // Inicia sincronização de dados do app
+                        if (typeof startDataSync === 'function') {
+                            startDataSync(safeId);
+                        } else {
+                            window.location.reload();
+                        }
                     } else {
-                        window.location.reload(); // Recarga de segurança
+                        alert("Acesso restrito. Efetue o pagamento para liberar.");
                     }
                 } else {
-                    alert("Acesso restrito. Efetue o pagamento para liberar o acesso.");
+                    alert("Usuário não encontrado no banco de dados.");
                 }
-            } else {
-                alert("E-mail ou senha inválidos.");
+            } catch (authErr) {
+                console.error("Erro no login:", authErr);
+                alert("E-mail ou senha incorretos. Se você redefiniu a senha, use a nova.");
             }
         }
     } catch (err) {
-        console.error("Erro no Processo de Auth:", err);
-        
-        // Tratamento de erros específicos do Firebase para o usuário
-        if (err.code === 'auth/email-already-in-use') alert("Este e-mail já está sendo usado.");
-        else if (err.code === 'auth/weak-password') alert("A senha deve ter pelo menos 6 caracteres.");
-        else if (err.code === 'auth/user-not-found') alert("Usuário não encontrado.");
-        else if (err.code === 'auth/invalid-email') alert("Formato de e-mail inválido.");
-        else alert("Ocorreu um erro: " + err.message);
+        console.error("Erro Geral:", err);
+        alert("Ocorreu um erro: " + err.message);
     } finally {
-        // ESSENCIAL: Isso tira o estado de "Processando" independente de erro ou sucesso
         setAuthLoading(false);
     }
 };
