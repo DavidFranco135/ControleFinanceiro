@@ -383,80 +383,83 @@
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
-            const handleAuth = async (e) => {
+           import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+const handleAuth = async (e) => {
     e.preventDefault();
-    setAuthLoading(true);
+    setAuthLoading(true); // Aqui começa o "processando"
     
-    // Padroniza o ID para busca no Firestore
+    const auth = getAuth();
     const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-    const auth = getAuth(); // Inicializa o Auth do Firebase
 
     try {
         const ref = doc(db, "users", safeId);
         const s = await getDoc(ref);
 
-        // --- CASO: RECUPERAÇÃO DE SENHA (NATIVO E AUTOMÁTICO) ---
+        // --- 1. CASO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
-            if (s.exists()) {
-                // Força o idioma para Português
-                auth.languageCode = 'pt'; 
-                
-                await sendPasswordResetEmail(auth, email.trim());
-                
-                alert("E-mail de redefinição enviado! Verifique sua caixa de entrada (e o Spam).");
-                setIsRecovering(false);
-            } else {
-                alert("Este e-mail não está cadastrado no sistema.");
-            }
+            auth.languageCode = 'pt'; 
+            // O e-mail só vai se o usuário existir na aba "Authentication"
+            await sendPasswordResetEmail(auth, email.trim());
+            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada e Spam.");
+            setIsRecovering(false);
             setAuthLoading(false);
             return;
         }
 
-        // --- CASO: CADASTRO DE NOVO USUÁRIO ---
+        // --- 2. CASO: CADASTRO DE NOVO USUÁRIO ---
         if (isRegistering) {
             if (s.exists()) {
-                alert("E-mail já cadastrado");
+                alert("E-mail já cadastrado no banco de dados.");
             } else {
+                // PRIMEIRO: Cria no Authentication (Para o e-mail de recuperação funcionar)
+                const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+                
+                // SEGUNDO: Salva no Firestore
                 await setDoc(ref, { 
+                    uid: userCredential.user.uid,
                     email: email.trim(), 
-                    password: pass, // Nota: No futuro, considere usar Firebase Auth para senhas criptografadas
+                    password: pass, 
                     appName: 'Meu Perfil', 
-                    secondaryName: 'Conta 2', 
-                    photoURL: '', 
-                    secondaryPhotoURL: '',
-                    soundEnabled: true,
                     status: 'pending',
-                    paid: false // Adicionado para bater com sua lógica de webhook
+                    paid: false 
                 });
+                
                 alert("Conta criada com sucesso!");
                 setIsRegistering(false);
             }
         } 
-        // --- CASO: LOGIN CONVENCIONAL ---
+        
+        // --- 3. CASO: LOGIN CONVENCIONAL ---
         else {
             if (s.exists() && s.data().password === pass) {
                 const userData = s.data();
-                
-                // Verifica se está pago ou se é o admin 'niklaus'
                 if (userData.status === 'paid' || userData.paid === true || email.toLowerCase() === 'niklaus') {
                     const storage = keepConnected ? localStorage : sessionStorage;
                     storage.setItem('belaju_sid', safeId);
                     startDataSync(safeId);
                 } else {
-                    alert("Acesso restrito. Efetue o pagamento para liberar o Niklaus.");
+                    alert("Acesso restrito. Efetue o pagamento.");
                 }
             } else {
                 alert("E-mail ou senha inválidos.");
             }
         }
     } catch (err) { 
-        console.error(err);
-        alert("Erro de conexão com o servidor."); 
+        console.error("Erro detalhado:", err.code);
+        
+        // TRATAMENTO DE ERROS PARA NÃO FICAR TRAVADO EM "PROCESSANDO"
+        if (err.code === 'auth/email-already-in-use') alert("Este e-mail já está em uso.");
+        else if (err.code === 'auth/weak-password') alert("A senha deve ter no mínimo 6 caracteres.");
+        else if (err.code === 'auth/user-not-found') alert("Usuário não encontrado no sistema de e-mail.");
+        else alert("Erro: " + err.message);
+
     } finally { 
+        // AQUI DESTRAVA O BOTÃO
         setAuthLoading(false); 
     }
 };
-
             /**
              * Limpa dados de sessão ao sair
              */
