@@ -168,39 +168,42 @@
     <div id="root"></div>
 
    <script type="module">
-        // 1. IMPORTS NO TOPO (Essencial para não dar tela azul)
-        import { initializeApp } from "firebase/app";
-      import { 
-    getAuth, 
-    createUserWithEmailAndPassword, 
-    sendPasswordResetEmail,
-    signInWithEmailAndPassword // <--- ADICIONE ESTA LINHA
-          } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js"; // Importação direta do Auth
-        import { 
-            getFirestore, doc, setDoc, getDoc, collection, 
-            addDoc, query, where, onSnapshot, deleteDoc, updateDoc, 
-            writeBatch, serverTimestamp, orderBy, getDocs 
-        } from "firebase/firestore";
-        import React, { useState, useEffect, useMemo, useRef } from 'react';
-        import ReactDOM from 'react-dom';
-        import htm from 'htm';
-        import { GoogleGenAI } from "@google/genai";
+    // 1. IMPORTS NO TOPO
+    import { initializeApp } from "firebase/app";
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        sendPasswordResetEmail,
+        signInWithEmailAndPassword 
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+    
+    import { 
+        getFirestore, doc, setDoc, getDoc, collection, 
+        addDoc, query, where, onSnapshot, deleteDoc, updateDoc, 
+        writeBatch, serverTimestamp, orderBy, getDocs 
+    } from "firebase/firestore";
 
-        const html = htm.bind(React.createElement);
-        
-        // 2. CONFIGURAÇÃO E INICIALIZAÇÃO
-        const firebaseConfig = {
-            apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
-            authDomain: "planilha-fina.firebaseapp.com",
-            projectId: "planilha-fina",
-            storageBucket: "planilha-fina.firebasestorage.app",
-            messagingSenderId: "288466007894",
-            appId: "1:288466007894:web:e917cc6eeac421671188f7"
-        };
+    import React, { useState, useEffect, useMemo, useRef } from 'react';
+    import ReactDOM from 'react-dom';
+    import htm from 'htm';
+    import { GoogleGenAI } from "@google/genai";
 
-        const fbApp = initializeApp(firebaseConfig);
-        const db = getFirestore(fbApp);
-        const auth = getAuth(fbApp); // Inicializa o serviço de autenticação aqui
+    const html = htm.bind(React.createElement);
+    
+    // 2. CONFIGURAÇÃO E INICIALIZAÇÃO
+    const firebaseConfig = {
+        apiKey: "AIzaSyD9vzjo_nrSjaRZ5sXK7G4fhnTTxIW7c-k",
+        authDomain: "planilha-fina.firebaseapp.com",
+        projectId: "planilha-fina",
+        storageBucket: "planilha-fina.firebasestorage.app",
+        messagingSenderId: "288466007894",
+        appId: "1:288466007894:web:e917cc6eeac421671188f7"
+    };
+
+    // Inicialização correta
+    const fbApp = initializeApp(firebaseConfig);
+    const auth = getAuth(fbApp);
+    const db = getFirestore(fbApp);
 
         // ... Resto dos sons e componentes (Avatar, etc) ...
 
