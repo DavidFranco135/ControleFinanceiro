@@ -19,41 +19,32 @@ const groq = new Groq({
 // server.js ou app.js
 const temasPiadas = ["investimentos", "bancos", "boletos", "cartão de crédito", "cripto", "inflação", "aposentadoria"];
 
+
+
 app.post("/gemini", async (req, res) => {
-    try {
-        const { mensagem, nomeUsuario } = req.body;
+  try {
+    const { mensagem, nomeUsuario } = req.body;
+    const temaAleatorio = temasPiadas[Math.floor(Math.random() * temasPiadas.length)];
 
-        if (!process.env.GROQ_KEY) {
-            return res.status(500).json({ erro: "Chave da API não configurada." });
-        }
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `Você é Niklaus, mentor financeiro. Nome do usuário: ${nomeUsuario || 'Amigo'}. 
+          Apresente-se, dê 3 dicas curtas com emojis e conte uma piada inédita sobre ${temaAleatorio}. 
+          Seja direto e rápido.`
+        },
+        { role: "user", content: mensagem }
+      ],
+      // MODELO INSTANTÂNEO PARA VELOCIDADE MÁXIMA
+      model: "llama-3.1-8b-instant", 
+      temperature: 0.9, // Mais criatividade nas piadas
+    });
 
-        // Seleciona um tema aleatório para a piada ser sempre diferente
-        const temaAleatorio = temasPiadas[Math.floor(Math.random() * temasPiadas.length)];
-
-        const completion = await groq.chat.completions.create({
-            messages: [
-                {
-                    role: "system",
-                    content: `Você é Niklaus, um mentor financeiro brasileiro sofisticado e engraçado.
-                    REGRAS:
-                    1. Comece saudando o(a) ${nomeUsuario || 'Investidor(a)'} pelo nome.
-                    2. Dê 3 dicas financeiras curtas e úteis com emojis.
-                    3. Conte uma piada curta e inédita sobre o tema: ${temaAleatorio}.
-                    4. Não faça perguntas ao usuário. Seja direto.`
-                },
-                { role: "user", content: mensagem }
-            ],
-            model: "llama-3.1-8b-instant", // Versão ultra rápida
-            temperature: 0.85, 
-        });
-
-        res.json({ resposta: completion.choices[0]?.message?.content });
-        console.log(`✅ Niklaus respondeu sobre ${temaAleatorio}`);
-
-    } catch (err) {
-        console.error("❌ Erro:", err.message);
-        res.status(500).json({ erro: "Niklaus offline", detalhes: err.message });
-    }
+    res.json({ resposta: completion.choices[0]?.message?.content });
+  } catch (err) {
+    res.status(500).json({ erro: "Niklaus deu uma saidinha." });
+  }
 });
 
 // --- ROTA DO WEBHOOK KIWIFY (A que estava faltando) ---
