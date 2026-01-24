@@ -1,18 +1,25 @@
 import admin from "firebase-admin";
 
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(
-      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    ),
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(
+        JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+      ),
+    });
+  } catch (error) {
+    console.error("Erro ao inicializar Firebase Admin:", error);
+  }
 }
 
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: "Método não permitido" });
+  }
+
   try {
     const data = req.body;
 
-    // Agora pegando do lugar CERTO
     const email =
       data?.Customer?.email ||
       data?.customer?.email ||
@@ -21,8 +28,7 @@ export default async function handler(req, res) {
       null;
 
     if (!email) {
-      console.log("Webhook recebido, mas sem email:", data);
-      return res.status(400).json({ error: "Email não encontrado no webhook" });
+      return res.status(400).json({ error: "Email não encontrado no corpo da requisição" });
     }
 
     const db = admin.firestore();
@@ -36,11 +42,9 @@ export default async function handler(req, res) {
       { merge: true }
     );
 
-    console.log("Acesso liberado para:", email);
-
     return res.status(200).json({ ok: true });
   } catch (err) {
-    console.error("Erro webhook:", err);
-    return res.status(500).json({ error: "Erro interno" });
+    console.error("Erro no Webhook:", err);
+    return res.status(500).json({ error: "Erro interno no processamento do webhook" });
   }
 }
