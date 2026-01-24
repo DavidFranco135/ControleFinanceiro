@@ -350,132 +350,50 @@
                 });
 
                 // Monitoramento de sugestões (feedback do admin)
-let unsubSugg = () => {};
+                let unsubSugg = () => {};
+                if (sid === 'niklaus') {
+                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                    unsubSugg = onSnapshot(qs, (s) => {
+                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+                    });
+                } else {
+                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                    unsubSugg = onSnapshot(qsUser, (s) => {
+                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                        setUserSuggestions(suggestions);
+                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+                        setUnreadCount(unread);
+                    });
+                }
 
-// Aqui verificamos se o usuário logado é o David (Admin)
-// Importante: use o e-mail ou o UID fixo do David
-if (userEmail === 'davidbhmg147@gmail.com' || sid === 'niklaus') {
-    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-    unsubSugg = onSnapshot(qs, (s) => {
-        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAdminSuggestions(suggestions);
-        
-        // ADMIN: O sininho toca quando há sugestões que o admin ainda não visualizou
-        const unreadAdmin = suggestions.filter(sug => sug.viewedByAdmin === false).length;
-        setUnreadCount(unreadAdmin);
-    });
-} else {
-    // USUÁRIO: Monitora apenas as próprias sugestões
-    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-    unsubSugg = onSnapshot(qsUser, (s) => {
-        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(suggestions);
-        
-        // USUÁRIO: O sininho toca quando o admin respondeu e o usuário ainda não viu
-        const unreadUser = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unreadUser);
-    });
-}
+                return () => { unsubUser(); unsubTx(); unsubSugg(); };
+            };
 
-return () => { unsubUser(); unsubTx(); unsubSugg(); };
-};
+            // Efeito para checar persistência de login ao carregar
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
 
-// Efeito para checar persistência de login ao carregar
-useEffect(() => {
-    const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-    // Note: Se startDataSync precisar do email, certifique-se de pegá-lo aqui ou dentro da função
-    if (sid) startDataSync(sid); 
-    setLoading(false);
-}, []);
+            // Efeito para fechar dropdown de notificações ao clicar fora
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+                        setShowNotificationList(false);
+                    }
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
 
-// Efeito para fechar dropdown de notificações ao clicar fora
-useEffect(() => {
-    const handleClickOutside = (event) => {
-        if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-            setShowNotificationList(false);
-        }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-}, []);
+            // Notificações formatadas (respostas do admin)
+            const notifications = useMemo(() => {
+                return [...userSuggestions]
+                    .filter(sug => sug.reply)
+                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
+            }, [userSuggestions]);
 
-// Notificações formatadas para exibição no Sininho
-const notifications = useMemo(() => {
-    // Se for Admin, mostra as sugestões recebidas
-    if (user?.email === 'davidbhmg147@gmail.com') {
-        return [...adminSuggestions]
-            .filter(sug => !sug.viewedByAdmin) // Opcional: mostrar apenas as novas ou todas
-            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-    }
-    
-    // Se for Usuário, mostra as respostas do Admin
-    return [...userSuggestions]
-        .filter(sug => sug.reply)
-        .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-}, [userSuggestions, adminSuggestions, user]);// Monitoramento de sugestões (feedback do admin)
-let unsubSugg = () => {};
-
-// Aqui verificamos se o usuário logado é o David (Admin)
-// Importante: use o e-mail ou o UID fixo do David
-if (userEmail === 'davidbhmg147@gmail.com' || sid === 'niklaus') {
-    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-    unsubSugg = onSnapshot(qs, (s) => {
-        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        setAdminSuggestions(suggestions);
-        
-        // ADMIN: O sininho toca quando há sugestões que o admin ainda não visualizou
-        const unreadAdmin = suggestions.filter(sug => sug.viewedByAdmin === false).length;
-        setUnreadCount(unreadAdmin);
-    });
-} else {
-    // USUÁRIO: Monitora apenas as próprias sugestões
-    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-    unsubSugg = onSnapshot(qsUser, (s) => {
-        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(suggestions);
-        
-        // USUÁRIO: O sininho toca quando o admin respondeu e o usuário ainda não viu
-        const unreadUser = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unreadUser);
-    });
-}
-
-return () => { unsubUser(); unsubTx(); unsubSugg(); };
-};
-
-// Efeito para checar persistência de login ao carregar
-useEffect(() => {
-    const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-    // Note: Se startDataSync precisar do email, certifique-se de pegá-lo aqui ou dentro da função
-    if (sid) startDataSync(sid); 
-    setLoading(false);
-}, []);
-
-// Efeito para fechar dropdown de notificações ao clicar fora
-useEffect(() => {
-    const handleClickOutside = (event) => {
-        if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-            setShowNotificationList(false);
-        }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-}, []);
-
-// Notificações formatadas para exibição no Sininho
-const notifications = useMemo(() => {
-    // Se for Admin, mostra as sugestões recebidas
-    if (user?.email === 'davidbhmg147@gmail.com') {
-        return [...adminSuggestions]
-            .filter(sug => !sug.viewedByAdmin) // Opcional: mostrar apenas as novas ou todas
-            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-    }
-    
-    // Se for Usuário, mostra as respostas do Admin
-    return [...userSuggestions]
-        .filter(sug => sug.reply)
-        .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-}, [userSuggestions, adminSuggestions, user]);
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
