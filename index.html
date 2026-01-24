@@ -388,58 +388,54 @@
            
 
 const handleAuth = async (e) => {
-    e.preventDefault();
-    setAuthLoading(true); // Aqui começa o "processando"
+    if (e) e.preventDefault();
     
-    const auth = getAuth();
-    const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    // 1. Prevenção de travamento: verifica se os campos existem
+    if (!email || (!isRecovering && !pass)) {
+        alert("Preencha os campos corretamente.");
+        return;
+    }
 
+    setAuthLoading(true);
+    
     try {
+        const auth = getAuth();
+        const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         const ref = doc(db, "users", safeId);
         const s = await getDoc(ref);
 
-        // --- 1. CASO: RECUPERAÇÃO DE SENHA ---
+        // --- RECUPERAÇÃO ---
         if (isRecovering) {
-            auth.languageCode = 'pt'; 
-            // O e-mail só vai se o usuário existir na aba "Authentication"
+            auth.languageCode = 'pt';
             await sendPasswordResetEmail(auth, email.trim());
-            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada e Spam.");
+            alert("E-mail enviado! Olhe sua caixa de entrada.");
             setIsRecovering(false);
-            setAuthLoading(false);
-            return;
-        }
-
-        // --- 2. CASO: CADASTRO DE NOVO USUÁRIO ---
-        if (isRegistering) {
+        } 
+        // --- CADASTRO ---
+        else if (isRegistering) {
             if (s.exists()) {
-                alert("E-mail já cadastrado no banco de dados.");
+                alert("E-mail já cadastrado.");
             } else {
-                // PRIMEIRO: Cria no Authentication (Para o e-mail de recuperação funcionar)
                 const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-                
-                // SEGUNDO: Salva no Firestore
                 await setDoc(ref, { 
                     uid: userCredential.user.uid,
                     email: email.trim(), 
                     password: pass, 
-                    appName: 'Meu Perfil', 
                     status: 'pending',
                     paid: false 
                 });
-                
-                alert("Conta criada com sucesso!");
+                alert("Conta criada!");
                 setIsRegistering(false);
             }
         } 
-        
-        // --- 3. CASO: LOGIN CONVENCIONAL ---
+        // --- LOGIN ---
         else {
             if (s.exists() && s.data().password === pass) {
                 const userData = s.data();
                 if (userData.status === 'paid' || userData.paid === true || email.toLowerCase() === 'niklaus') {
-                    const storage = keepConnected ? localStorage : sessionStorage;
+                    const storage = window.localStorage; 
                     storage.setItem('belaju_sid', safeId);
-                    startDataSync(safeId);
+                    if (typeof startDataSync === 'function') startDataSync(safeId);
                 } else {
                     alert("Acesso restrito. Efetue o pagamento.");
                 }
@@ -447,18 +443,14 @@ const handleAuth = async (e) => {
                 alert("E-mail ou senha inválidos.");
             }
         }
-    } catch (err) { 
-        console.error("Erro detalhado:", err.code);
-        
-        // TRATAMENTO DE ERROS PARA NÃO FICAR TRAVADO EM "PROCESSANDO"
-        if (err.code === 'auth/email-already-in-use') alert("Este e-mail já está em uso.");
-        else if (err.code === 'auth/weak-password') alert("A senha deve ter no mínimo 6 caracteres.");
-        else if (err.code === 'auth/user-not-found') alert("Usuário não encontrado no sistema de e-mail.");
-        else alert("Erro: " + err.message);
-
-    } finally { 
-        // AQUI DESTRAVA O BOTÃO
-        setAuthLoading(false); 
+    } catch (err) {
+        console.error("Erro no Auth:", err);
+        // Mensagens amigáveis para o usuário
+        if (err.code === 'auth/invalid-email') alert("E-mail inválido.");
+        else if (err.code === 'auth/user-not-found') alert("Usuário não encontrado.");
+        else alert("Ocorreu um erro: " + err.message);
+    } finally {
+        setAuthLoading(false);
     }
 };
             /**
