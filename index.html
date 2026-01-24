@@ -384,63 +384,78 @@
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
             const handleAuth = async (e) => {
-                e.preventDefault();
-                setAuthLoading(true);
-                const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
-                try {
-                    const ref = doc(db, "users", safeId);
-                    const s = await getDoc(ref);
-                    
-                    // Caso: Recuperação de Senha (envia sugestão ao sistema)
-                    if (isRecovering) {
-                        if (s.exists()) {
-                            await addDoc(collection(db, "suggestions"), {
-                                userId: 'system',
-                                userEmail: email,
-                                message: `SOLICITAÇÃO DE RECUPERAÇÃO DE SENHA PARA O USUÁRIO: ${email}`,
-                                createdAt: serverTimestamp(),
-                                reply: null,
-                                repliedAt: null,
-                                replyViewed: false
-                            });
-                            alert("Solicitação enviada! Verifique sua caixa de entrada em breve ou contate o administrador.");
-                            setIsRecovering(false);
-                        } else {
-                            alert("Usuário não encontrado.");
-                        }
-                        setAuthLoading(false);
-                        return;
-                    }
+    e.preventDefault();
+    setAuthLoading(true);
+    
+    // Padroniza o ID para busca no Firestore
+    const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    const auth = getAuth(); // Inicializa o Auth do Firebase
 
-                    // Caso: Cadastro de novo usuário
-                    if (isRegistering) {
-                        if (s.exists()) alert("E-mail já cadastrado");
-                        else {
-                            await setDoc(ref, { 
-                                email, 
-                                password: pass, 
-                                appName: 'Meu Perfil', 
-                                secondaryName: 'Conta 2', 
-                                photoURL: '', 
-                                secondaryPhotoURL: '',
-                                soundEnabled: true,
-                                status: 'pending' 
-                            });
-                            alert("Conta criada!");
-                        }
-                    } else {
-                        // Caso: Login convencional
-                        if (s.exists() && s.data().password === pass) {
-                            if (s.data().status === 'paid' || email.toLowerCase() === 'niklaus') {
-                                const storage = keepConnected ? localStorage : sessionStorage;
-                                storage.setItem('belaju_sid', safeId);
-                                startDataSync(safeId);
-                            } else alert("Acesso restrito, efetue o pagamento para usar o App.");
-                        } else alert("Dados inválidos");
-                    }
-                } catch (err) { alert("Erro de conexão"); }
-                finally { setAuthLoading(false); }
-            };
+    try {
+        const ref = doc(db, "users", safeId);
+        const s = await getDoc(ref);
+
+        // --- CASO: RECUPERAÇÃO DE SENHA (NATIVO E AUTOMÁTICO) ---
+        if (isRecovering) {
+            if (s.exists()) {
+                // Força o idioma para Português
+                auth.languageCode = 'pt'; 
+                
+                await sendPasswordResetEmail(auth, email.trim());
+                
+                alert("E-mail de redefinição enviado! Verifique sua caixa de entrada (e o Spam).");
+                setIsRecovering(false);
+            } else {
+                alert("Este e-mail não está cadastrado no sistema.");
+            }
+            setAuthLoading(false);
+            return;
+        }
+
+        // --- CASO: CADASTRO DE NOVO USUÁRIO ---
+        if (isRegistering) {
+            if (s.exists()) {
+                alert("E-mail já cadastrado");
+            } else {
+                await setDoc(ref, { 
+                    email: email.trim(), 
+                    password: pass, // Nota: No futuro, considere usar Firebase Auth para senhas criptografadas
+                    appName: 'Meu Perfil', 
+                    secondaryName: 'Conta 2', 
+                    photoURL: '', 
+                    secondaryPhotoURL: '',
+                    soundEnabled: true,
+                    status: 'pending',
+                    paid: false // Adicionado para bater com sua lógica de webhook
+                });
+                alert("Conta criada com sucesso!");
+                setIsRegistering(false);
+            }
+        } 
+        // --- CASO: LOGIN CONVENCIONAL ---
+        else {
+            if (s.exists() && s.data().password === pass) {
+                const userData = s.data();
+                
+                // Verifica se está pago ou se é o admin 'niklaus'
+                if (userData.status === 'paid' || userData.paid === true || email.toLowerCase() === 'niklaus') {
+                    const storage = keepConnected ? localStorage : sessionStorage;
+                    storage.setItem('belaju_sid', safeId);
+                    startDataSync(safeId);
+                } else {
+                    alert("Acesso restrito. Efetue o pagamento para liberar o Niklaus.");
+                }
+            } else {
+                alert("E-mail ou senha inválidos.");
+            }
+        }
+    } catch (err) { 
+        console.error(err);
+        alert("Erro de conexão com o servidor."); 
+    } finally { 
+        setAuthLoading(false); 
+    }
+};
 
             /**
              * Limpa dados de sessão ao sair
