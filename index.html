@@ -168,6 +168,8 @@
     <div id="root"></div>
 
     <script type="module">
+        import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+        import { doc, getDoc, setDoc } from "firebase/firestore";
         import React, { useState, useEffect, useMemo, useRef } from 'react';
         import ReactDOM from 'react-dom';
         import htm from 'htm';
@@ -383,8 +385,7 @@
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
-           import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+           
 
 const handleAuth = async (e) => {
     e.preventDefault();
