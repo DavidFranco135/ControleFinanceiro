@@ -765,7 +765,32 @@ const generateAIAdvice = async () => {
             /**
              * Envio de feedback/sugestão
              */
-           
+            * Envio de feedback/sugestão
+             */
+            const sendSuggestion = async () => {
+                if (!suggestionText.trim()) return;
+                setSendingSuggestion(true);
+                try {
+                    await addDoc(collection(db, "suggestions"), {
+                        userId: user.id,
+                        userEmail: user.email,
+                        message: suggestionText,
+                        createdAt: serverTimestamp(),
+                        reply: null,
+                        repliedAt: null,
+                        replyViewed: false
+                    });
+                    setSuggestionText('');
+                    alert("Obrigado! Sua sugestão foi enviada com sucesso.");
+                } catch (e) { alert("Erro ao enviar sugestão."); }
+                finally { setSendingSuggestion(false); }
+            };
+
+            const markReplyAsViewed = async (sugId) => {
+                try {
+                    await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
+                } catch (e) { console.error(e); }
+            };
             /**
              * Compartilhamento do app (Web Share API)
              */
