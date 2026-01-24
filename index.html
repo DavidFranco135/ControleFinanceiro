@@ -168,8 +168,16 @@
     <div id="root"></div>
 
     <script type="module">
-        import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
-        import { doc, getDoc, setDoc } from "firebase/firestore";
+       
+    // Adicione esta importação específica para o Auth
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        sendPasswordResetEmail 
+    } from "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js";
+    
+    import { doc, getDoc, setDoc } from "firebase/firestore";
+    // ... os outros imports que você já tem (React, initializeApp, etc)
         import React, { useState, useEffect, useMemo, useRef } from 'react';
         import ReactDOM from 'react-dom';
         import htm from 'htm';
@@ -390,7 +398,7 @@
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
-    // 1. Prevenção de travamento: verifica se os campos existem
+    // 1. Validação básica para evitar erros de campo vazio
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
@@ -399,57 +407,78 @@ const handleAuth = async (e) => {
     setAuthLoading(true);
     
     try {
-        const auth = getAuth();
+        const auth = getAuth(); // Inicializa o serviço de autenticação
         const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         const ref = doc(db, "users", safeId);
         const s = await getDoc(ref);
 
-        // --- RECUPERAÇÃO ---
+        // --- CASO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
             auth.languageCode = 'pt';
+            // O Firebase só envia se o e-mail existir no 'Authentication'
             await sendPasswordResetEmail(auth, email.trim());
-            alert("E-mail enviado! Olhe sua caixa de entrada.");
+            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
         } 
-        // --- CADASTRO ---
+        
+        // --- CASO: CADASTRO DE NOVO USUÁRIO ---
         else if (isRegistering) {
             if (s.exists()) {
-                alert("E-mail já cadastrado.");
+                alert("Este e-mail já está cadastrado no banco de dados.");
             } else {
+                // PRIMEIRO: Cria no Firebase Authentication
                 const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+                
+                // SEGUNDO: Cria o perfil no Firestore
                 await setDoc(ref, { 
                     uid: userCredential.user.uid,
                     email: email.trim(), 
                     password: pass, 
+                    appName: 'Meu Perfil', 
                     status: 'pending',
-                    paid: false 
+                    paid: false,
+                    createdAt: new Date()
                 });
-                alert("Conta criada!");
+                
+                alert("Conta criada com sucesso!");
                 setIsRegistering(false);
             }
         } 
-        // --- LOGIN ---
+        
+        // --- CASO: LOGIN CONVENCIONAL ---
         else {
             if (s.exists() && s.data().password === pass) {
                 const userData = s.data();
+                
+                // Validação de pagamento ou admin
                 if (userData.status === 'paid' || userData.paid === true || email.toLowerCase() === 'niklaus') {
-                    const storage = window.localStorage; 
+                    const storage = keepConnected ? localStorage : sessionStorage;
                     storage.setItem('belaju_sid', safeId);
-                    if (typeof startDataSync === 'function') startDataSync(safeId);
+                    
+                    // Inicia a sincronização se a função existir
+                    if (typeof startDataSync === 'function') {
+                        startDataSync(safeId);
+                    } else {
+                        window.location.reload(); // Recarga de segurança
+                    }
                 } else {
-                    alert("Acesso restrito. Efetue o pagamento.");
+                    alert("Acesso restrito. Efetue o pagamento para liberar o acesso.");
                 }
             } else {
                 alert("E-mail ou senha inválidos.");
             }
         }
     } catch (err) {
-        console.error("Erro no Auth:", err);
-        // Mensagens amigáveis para o usuário
-        if (err.code === 'auth/invalid-email') alert("E-mail inválido.");
+        console.error("Erro no Processo de Auth:", err);
+        
+        // Tratamento de erros específicos do Firebase para o usuário
+        if (err.code === 'auth/email-already-in-use') alert("Este e-mail já está sendo usado.");
+        else if (err.code === 'auth/weak-password') alert("A senha deve ter pelo menos 6 caracteres.");
         else if (err.code === 'auth/user-not-found') alert("Usuário não encontrado.");
+        else if (err.code === 'auth/invalid-email') alert("Formato de e-mail inválido.");
         else alert("Ocorreu um erro: " + err.message);
     } finally {
+        // ESSENCIAL: Isso tira o estado de "Processando" independente de erro ou sucesso
         setAuthLoading(false);
     }
 };
