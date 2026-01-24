@@ -617,19 +617,18 @@
              */
       const generateAIAdvice = async () => {
     if (aiLoading) return;
+    
     setAiLoading(true);
     setShowAiModal(true);
-    setAiAdvice('');
+    setAiAdvice('Niklaus está analisando suas finanças... (Isso pode levar 30s se o servidor estiver ligando)');
 
     try {
-
         const summary = `
-Resumo Financeiro do Usuário:
-Total de Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
-Total de Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
-Saldo Atual: R$ ${totals.bal.toLocaleString('pt-BR')}
-Principais transações recentes:
-${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
+Resumo Financeiro:
+Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}
+Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}
+Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}
+Transações: ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).join(', ')}
         `;
 
         const res = await fetch("https://controlefinanceiro-naip.onrender.com/gemini", {
@@ -642,6 +641,11 @@ ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).
             })
         });
 
+        if (!res.ok) {
+            const errorText = await res.text();
+            throw new Error(`Erro no servidor: ${res.status}`);
+        }
+
         const data = await res.json();
 
         if (data.resposta) {
@@ -651,13 +655,10 @@ ${currentTransactions.slice(0, 5).map(t => `${t.description} (R$ ${t.amount})`).
         }
 
     } catch (err) {
-        console.error("Erro na IA:", err);
+        console.error("Erro na chamada da IA:", err);
+        // Resposta de contingência caso o servidor falhe
         setAiAdvice(
-`Dicas do Niklaus para o seu momento:
-
-1. 💸 Corte vazamentos invisíveis: pequenos gastos recorrentes estão corroendo seu saldo.
-2. 📈 Automatize sua prosperidade: guarde antes de gastar.
-3. 🚀 Foque em gerar ativos, não apenas renda: renda paga contas, ativos constroem riqueza.`
+            `Niklaus recomenda:\n\n1. Verificamos uma instabilidade na conexão, mas não pare de anotar seus gastos!\n2. Mantenha sua reserva de emergência priorizada.\n3. Evite compras parceladas esta semana.`
         );
     } finally {
         setAiLoading(false);
