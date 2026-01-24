@@ -1,18 +1,22 @@
 import express from "express";
-import fetch from "node-fetch";
 import cors from "cors";
+import { GoogleGenAI } from "@google/generative-ai";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Certifique-se de ter configurado a variável no Render: GEMINI_KEY
 const GEMINI_KEY = process.env.GEMINI_KEY;
 
 app.post("/gemini", async (req, res) => {
   try {
     const { mensagem } = req.body;
 
-    // Prompt Niklaus em português com emojis
+    // Cria o cliente da Gemini
+    const ai = new GoogleGenAI({ apiKey: GEMINI_KEY });
+
+    // Prompt do Niklaus
     const promptText = `
 Você é Niklaus, mentor financeiro brasileiro, direto, pragmático e experiente.
 Gere 3 dicas financeiras estratégicas, objetivas e aplicáveis.
@@ -23,22 +27,16 @@ Dados do usuário:
 ${mensagem}
     `;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1:generateMessage?key=${GEMINI_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input: { text: promptText } // 👈 formato correto
-        })
+    // Chamada ao modelo Gemini
+    const response = await ai.models.generateContent({
+      model: "gemini-3", // modelo disponível
+      contents: promptText,
+      config: {
+        systemInstruction: "Você é Niklaus, mentor financeiro experiente, pragmático e direto. Dê 3 dicas financeiras em português com emojis moderados."
       }
-    );
+    });
 
-    const data = await response.json();
-    console.log("Resposta bruta da Gemini:", JSON.stringify(data, null, 2));
-
-    // Parse simples e seguro
-    const texto = data?.output?.[0]?.content?.[0]?.text || "⚠️ IA não retornou texto válido";
+    const texto = response?.text || "⚠️ IA não retornou texto válido";
 
     res.json({ resposta: texto });
 
