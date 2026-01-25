@@ -7,13 +7,28 @@
     <title>Finanças</title>
     
     <!-- Configurações para Web App (PWA) e Favicons -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-touch-fullscreen" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
     <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
     
     <!-- Importação de bibliotecas externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    // Sua configuração aqui (colors, theme, etc)
+    theme: {
+      extend: {
+        colors: {
+          violet: { 600: '#7c3aed' }
+        }
+      }
+    }
+  }
+</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -1163,7 +1178,7 @@ const markReplyAsViewed = async (sugId) => {
                                     ${aiLoading ? html`
                                         <div className="py-12 flex flex-col items-center justify-center space-y-4">
                                             <div className="loader w-8 h-8 border-4 border-slate-800 rounded-full"></div>
-                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] animate-pulse">Analisando seus dados...</p>
+                                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] animate-pulse">Niklaus está calculando os seus gastos, aguarde...</p>
                                         </div>
                                     ` : html`
                                         <div className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap font-medium bg-slate-800/30 p-6 rounded-2xl border border-slate-700/50">
