@@ -1,19 +1,19 @@
-<!DOCTYPE html>
 
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanças</title>
     
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Finanças">
+    <!-- Configurações para Web App (PWA) e Favicons -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
     <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
     
+    <!-- Importação de bibliotecas externas -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -52,7 +52,7 @@
         }
         @keyframes spinner { to { transform: rotate(360deg); } }
 
-        /* Animações de Entrada */
+        /* Animações de Entrada de Elementos */
         .animate-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
@@ -62,7 +62,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Destaque Sidebar */
+        /* Destaque para item ativo na Sidebar */
         .sidebar-item-active {
             background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 100%);
             color: var(--primary);
@@ -70,9 +70,11 @@
             text-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
         }
 
+        /* Customização de Scrollbar */
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
         
+        /* Ajuste de inputs para dispositivos móveis */
         input, select, textarea { font-size: 16px !important; color: white !important; }
         
         @media (max-width: 640px) {
@@ -86,8 +88,11 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .notification-layer { z-index: 9999 !important; }
+        .notification-layer {
+            z-index: 9999 !important;
+        }
 
+        /* Efeito de desfoque para ocultar valores */
         .blur-value {
             filter: blur(8px);
             opacity: 0.6;
@@ -95,9 +100,11 @@
             pointer-events: none;
         }
 
-        .transition-value { transition: filter 0.3s ease, opacity 0.3s ease; }
+        .transition-value {
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
 
-        /* Estilização Switch */
+        /* Estilização do Toggle Switch (Configurações) */
         .switch {
           position: relative;
           display: inline-block;
@@ -105,12 +112,19 @@
           height: 24px;
         }
 
-        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch input { 
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
 
         .slider {
           position: absolute;
           cursor: pointer;
-          top: 0; left: 0; right: 0; bottom: 0;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
           background-color: #334155;
           transition: .4s;
           border-radius: 34px;
@@ -119,17 +133,25 @@
         .slider:before {
           position: absolute;
           content: "";
-          height: 18px; width: 18px;
-          left: 3px; bottom: 3px;
+          height: 18px;
+          width: 18px;
+          left: 3px;
+          bottom: 3px;
           background-color: white;
           transition: .4s;
           border-radius: 50%;
         }
 
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        input:checked + .slider {
+          background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(20px);
+        }
     </style>
 
+    <!-- Mapeamento de Módulos (ESM) -->
     <script type="importmap">
     {
       "imports": {
@@ -137,7 +159,6 @@
         "react-dom": "https://esm.sh/react-dom@18.2.0",
         "firebase/app": "https://www.gstatic.com/firebasejs/11.3.1/firebase-app.js",
         "firebase/firestore": "https://www.gstatic.com/firebasejs/11.3.1/firebase-firestore.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/11.3.1/firebase-auth.js",
         "htm": "https://esm.sh/htm@3.1.1",
         "@google/genai": "https://esm.sh/@google/genai"
       }
@@ -294,134 +315,94 @@
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
-            // ... dentro do seu componente App ...
-
-/**
- * Inicia a sincronização de dados em tempo real com o Firestore
- */
-const startDataSync = (sid) => {
+            const startDataSync = (sid) => {
                 setLoading(true);
                 
+                // Monitoramento de dados do usuário
                 const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
                     if (s.exists()) {
                         const userData = { id: s.id, ...s.data() };
-                        
-                        // Verificação Unificada de Admin
-                        const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true" || userData.id === 'niklaus';
-                        
-                        if (!isNiklaus && userData.status !== 'paid') {
-                             alert("Acesso Bloqueado. Efetue o pagamento.");
+                        // Bloqueio de segurança para usuários não pagos (exceto adm)
+                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
+                             alert("Acesso Bloqueado.");
                              handleLogout();
                              return;
                         }
-
                         setUser(userData);
                         setProfileName(userData.appName || 'Meu Perfil');
                         setSecondaryName(userData.secondaryName || 'Conta 2');
                         setProfilePhoto(userData.photoURL || '');
                         setSecondaryPhoto(userData.secondaryPhotoURL || '');
                         setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
-
-                        // Monitoramento de Sugestões
-                        const qs = isNiklaus 
-                            ? query(collection(db, "suggestions"), orderBy("createdAt", "desc"))
-                            : query(collection(db, "suggestions"), where("userId", "==", sid));
-
-                        const unsubSugg = onSnapshot(qs, (snap) => {
-                            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                            setAdminSuggestions(list); 
-                            setUserSuggestions(list); 
-
-                            setUnreadCount(isNiklaus 
-                                ? list.filter(sug => sug.status === "unread").length 
-                                : list.filter(sug => sug.reply && !sug.replyViewed).length
-                            );
-                        });
-                        window.activeUnsubSugg = unsubSugg;
-                    } else {
-                        handleLogout();
-                    }
+                    } else handleLogout();
                 });
 
-                const unsubTx = onSnapshot(query(collection(db, "transactions"), where("userId", "==", sid)), (s) => {
+                // Monitoramento das transações do usuário
+                const q = query(collection(db, "transactions"), where("userId", "==", sid));
+                const unsubTx = onSnapshot(q, (s) => {
                     const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-                    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-                    setLoading(false); 
-                }, (error) => {
-                    console.error("Erro:", error);
+                    setTransactions(docs.sort((a, b) => {
+                        const dateA = a.createdAt?.seconds || 0;
+                        const dateB = b.createdAt?.seconds || 0;
+                        return dateB - dateA;
+                    }));
                     setLoading(false);
                 });
 
-                return () => { 
-                    unsubUser(); 
-                    unsubTx(); 
-                    if (window.activeUnsubSugg) window.activeUnsubSugg(); 
-                };
-            }; // Chave que fecha o startDataSync corretamente
-
-            /**
-             * Lógica de Autenticação
-             */
-            const handleAuth = async (e) => {
-                if (e) e.preventDefault();
-                if (!email || (!isRecovering && !pass)) {
-                    alert("Preencha os campos corretamente.");
-                    return;
+                // Monitoramento de sugestões (feedback do admin)
+                let unsubSugg = () => {};
+                if (sid === 'niklaus') {
+                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                    unsubSugg = onSnapshot(qs, (s) => {
+                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+                    });
+                } else {
+                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                    unsubSugg = onSnapshot(qsUser, (s) => {
+                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
+                        setUserSuggestions(suggestions);
+                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+                        setUnreadCount(unread);
+                    });
                 }
 
-                setAuthLoading(true);
-                try {
-                    const emailTrim = email.toLowerCase().trim();
-                    const safeId = emailTrim.replace(/[^a-z0-9]/g, '_');
-                    const userRef = doc(db, "users", safeId);
-                    const userSnap = await getDoc(userRef);
+                return () => { unsubUser(); unsubTx(); unsubSugg(); };
+            };
 
-                    if (isRecovering) {
-                        auth.languageCode = 'pt';
-                        await sendPasswordResetEmail(auth, emailTrim);
-                        alert("E-mail de redefinição enviado!");
-                        setIsRecovering(false);
-                    } else if (isRegistering) {
-                        // Lógica de Registro... (seu código de registro aqui)
-                    } else {
-                        await signInWithEmailAndPassword(auth, emailTrim, pass);
-                        if (userSnap.exists()) {
-                            const userData = userSnap.data();
-                            const isNiklaus = emailTrim === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
-                            
-                            if (userData.paid || userData.status === 'paid' || isNiklaus) {
-                                const storage = keepConnected ? localStorage : sessionStorage;
-                                storage.setItem('belaju_sid', safeId);
-                                startDataSync(safeId);
-                            } else {
-                                alert("Acesso restrito. Efetue o pagamento.");
-                            }
-                        }
+            // Efeito para checar persistência de login ao carregar
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
+
+            // Efeito para fechar dropdown de notificações ao clicar fora
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+                        setShowNotificationList(false);
                     }
-                } catch (err) {
-                    alert("Erro: " + err.message);
-                } finally {
-                    setAuthLoading(false);
-                }
-            }; // Chave que fecha o handleAuth corretamente
+                };
+                document.addEventListener('mousedown', handleClickOutside);
+                return () => document.removeEventListener('mousedown', handleClickOutside);
+            }, []);
 
-    return () => { 
-        unsubUser(); 
-        unsubTx(); 
-        if (window.activeUnsubSugg) window.activeUnsubSugg(); 
-    };
-}; 
+            // Notificações formatadas (respostas do admin)
+            const notifications = useMemo(() => {
+                return [...userSuggestions]
+                    .filter(sug => sug.reply)
+                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
+            }, [userSuggestions]);
+
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
              */
            
 
-// --- FECHE QUALQUER FUNÇÃO ANTERIOR AQUI ---
-
 const handleAuth = async (e) => {
     if (e) e.preventDefault();
     
-    // Validação básica
+    // Validação inicial
     if (!email || (!isRecovering && !pass)) {
         alert("Preencha os campos corretamente.");
         return;
@@ -430,71 +411,84 @@ const handleAuth = async (e) => {
     setAuthLoading(true);
     
     try {
-        const emailTrim = email.toLowerCase().trim();
-        // Gera o ID seguro para o Firestore
-        const safeId = emailTrim.replace(/[^a-z0-9]/g, '_');
+        // 'auth' e 'db' já foram inicializados no topo do script
+        const safeId = email.toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
         const userRef = doc(db, "users", safeId);
         const userSnap = await getDoc(userRef);
 
-        // MODO: RECUPERAÇÃO
+        // --- MODO: RECUPERAÇÃO DE SENHA ---
         if (isRecovering) {
             auth.languageCode = 'pt';
-            await sendPasswordResetEmail(auth, emailTrim);
-            alert("E-mail de redefinição enviado!");
+            await sendPasswordResetEmail(auth, email.trim());
+            alert("E-mail de redefinição enviado! Verifique sua caixa de entrada.");
             setIsRecovering(false);
         } 
-        // MODO: CADASTRO
+        
+        // --- MODO: CADASTRO ---
         else if (isRegistering) {
             if (userSnap.exists()) {
                 alert("Este e-mail já está cadastrado.");
             } else {
-                const cred = await createUserWithEmailAndPassword(auth, emailTrim, pass);
+                // Cria no Authentication
+                const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+                // Salva no Firestore
                 await setDoc(userRef, {
                     uid: cred.user.uid,
-                    email: emailTrim,
-                    password: pass,
+                    email: email.trim(),
+                    password: pass, // Senha em texto para o seu sistema de login legado
                     status: 'pending',
                     paid: false,
-                    isAdmin: "false",
                     createdAt: serverTimestamp()
                 });
                 alert("Conta criada com sucesso!");
                 setIsRegistering(false);
             }
         } 
-        // MODO: LOGIN
+        
+        // --- MODO: LOGIN COM SINCRONIZAÇÃO DE SENHA ---
         else {
-            await signInWithEmailAndPassword(auth, emailTrim, pass);
-            
-            if (userSnap.exists()) {
-                const userData = userSnap.data();
-                // Verifica se é admin (David ou campo isAdmin)
-                const isNiklaus = emailTrim === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
+            try {
+                // 1. Tenta logar no Firebase Auth (valida a senha nova se tiver sido resetada)
+                await signInWithEmailAndPassword(auth, email.trim(), pass);
                 
-                if (userData.paid || userData.status === 'paid' || isNiklaus) {
-                    const storage = keepConnected ? localStorage : sessionStorage;
-                    storage.setItem('belaju_sid', safeId);
-                    
-                    // Inicia a sincronização se a função existir
-                    if (typeof startDataSync === 'function') {
-                        startDataSync(safeId);
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+
+                    // 2. SINCRONIZAÇÃO: Se a senha digitada for diferente da que está no Firestore, atualiza o Firestore
+                    if (userData.password !== pass) {
+                        await updateDoc(userRef, { password: pass });
+                        console.log("Senha sincronizada no banco de dados.");
+                    }
+
+                    // 3. Verificação de Acesso (Pagamento ou Admin)
+                    if (userData.paid || userData.status === 'paid' || email.toLowerCase() === 'niklaus') {
+                        const storage = keepConnected ? localStorage : sessionStorage;
+                        storage.setItem('belaju_sid', safeId);
+                        
+                        // Inicia sincronização de dados do app
+                        if (typeof startDataSync === 'function') {
+                            startDataSync(safeId);
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert("Acesso restrito. Efetue o pagamento para liberar.");
                     }
                 } else {
-                    alert("Acesso restrito. Efetue o pagamento.");
+                    alert("Usuário não encontrado no banco de dados.");
                 }
-            } else {
-                alert("Usuário não encontrado no banco de dados.");
+            } catch (authErr) {
+                console.error("Erro no login:", authErr);
+                alert("E-mail ou senha incorretos. Se você redefiniu a senha, use a nova.");
             }
         }
     } catch (err) {
-        console.error("Erro na Auth:", err);
-        alert("Erro: " + err.message);
+        console.error("Erro Geral:", err);
+        alert("Ocorreu um erro: " + err.message);
     } finally {
         setAuthLoading(false);
     }
 };
-
-// --- NÃO DEVE HAVER UM RETURN SOLTO AQUI ---
             /**
              * Limpa dados de sessão ao sair
              */
@@ -752,53 +746,38 @@ const generateAIAdvice = async () => {
 const sendSuggestion = async () => {
     if (!suggestionText.trim()) return;
     setSendingSuggestion(true);
-    
     try {
-        // Adicionamos o campo 'status' para controlar as notificações no seu painel
         await addDoc(collection(db, "suggestions"), {
             userId: user.id,
-            userName: profileName || 'Usuário',
+            userName: profileName || 'Usuário', // Importante para você saber quem mandou
             userEmail: user.email,
             message: suggestionText,
-            createdAt: serverTimestamp(), // Certifique-se de que serverTimestamp foi importado do firestore
-            status: "unread",  // <--- ESSENCIAL: Isso fará a bolinha de notificação aparecer para você
+            createdAt: serverTimestamp(),
             reply: null,
             repliedAt: null,
             replyViewed: false
         });
-
         setSuggestionText('');
-        
-        // Feedback visual mais moderno
-        if (typeof toast !== 'undefined') {
-            toast.success("Sugestão enviada! Niklaus será notificado.");
-        } else {
-            alert("Obrigado! Sua sugestão foi enviada e o administrador foi notificado.");
-        }
+        alert("Obrigado! Sua sugestão foi enviada com sucesso.");
     } catch (e) { 
-        console.error("Erro ao enviar:", e);
-        alert("Erro ao enviar sugestão. Verifique sua conexão."); 
+        alert("Erro ao enviar sugestão."); 
     } finally { 
         setSendingSuggestion(false); 
     }
 };
 
 // Função exclusiva para o Niklaus responder
-const sendReply = async (suggestionId, replyText) => {
-    if (!replyText.trim()) return;
-    
+const sendReply = async (sugId, replyText) => {
+    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
     try {
-        const docRef = doc(db, "suggestions", suggestionId);
-        await updateDoc(docRef, {
+        await updateDoc(doc(db, "suggestions", sugId), {
             reply: replyText,
             repliedAt: serverTimestamp(),
-            status: "read",
-            replyViewed: false 
+            replyViewed: false
         });
         alert("Resposta enviada com sucesso!");
     } catch (e) {
         console.error("Erro ao responder:", e);
-        alert("Erro ao enviar resposta.");
     }
 };
 
@@ -808,197 +787,244 @@ const markReplyAsViewed = async (sugId) => {
     } catch (e) { console.error(e); }
 };
 
-/**
- * Compartilhamento do app (Web Share API)
- */
-const handleAppShare = async () => {
-    const shareData = {
-        title: 'GestorFinanceiro - Controle Financeiro Premium',
-        text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link:',
-        url: window.location.href
-    };
+            /**
+             * Compartilhamento do app (Web Share API)
+             */
+            const handleAppShare = async () => {
+                const shareData = {
+                    title: 'GestorFinanceiro - Controle Financeiro Premium',
+                    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
+                    url: window.location.href
+                };
 
-    try {
-        if (navigator.share) {
-            await navigator.share(shareData);
-        } else {
-            await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-            alert("Link copiado com sucesso!");
-        }
-    } catch (err) {
-        console.log('Error sharing:', err);
-    }
-};
-
-// Auxiliar para tratar datas de forma segura (String ou Firebase Timestamp)
-const safeDate = (dateVal) => {
-    if (!dateVal) return "";
-    if (typeof dateVal === 'string') return dateVal.split('T')[0];
-    if (dateVal.seconds) return new Date(dateVal.seconds * 1000).toISOString().split('T')[0];
-    return "";
-};
-
-// Memoized: Transações filtradas
-const currentTransactions = useMemo(() => {
-    let base;
-    if (activeTab === 'transactions' || activeTab === 'analytics') {
-        base = viewSecondaryTransactions ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
-    } else if (activeTab === 'secondary') {
-        base = transactions.filter(t => t.isSecondary);
-    } else {
-        base = transactions.filter(t => !t.isSecondary);
-    }
-
-    let filteredByDate = base;
-    if (balanceMode === 'ACCUMULATED') {
-        if (accumStart && accumEnd) {
-            filteredByDate = base.filter(t => {
-                const d = safeDate(t.date);
-                return d >= accumStart && d <= accumEnd;
-            });
-        }
-    } else {
-        filteredByDate = base.filter(t => safeDate(t.date).startsWith(filterMonth));
-    }
-
-    return filteredByDate
-        .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter)
-        .filter(t => methodFilter === 'ALL' ? true : t.method === methodFilter);
-}, [transactions, activeTab, filterMonth, typeFilter, methodFilter, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
-
-// Memoized: Totais
-const totals = useMemo(() => {
-    const base = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions)) 
-        ? transactions.filter(t => t.isSecondary) 
-        : transactions.filter(t => !t.isSecondary);
-
-    let filtered = base;
-    if (balanceMode === 'ACCUMULATED') {
-        if (accumStart && accumEnd) {
-            filtered = base.filter(t => {
-                const d = safeDate(t.date);
-                return d >= accumStart && d <= accumEnd;
-            });
-        }
-    } else {
-        filtered = base.filter(t => safeDate(t.date).startsWith(filterMonth));
-    }
-
-    const stats = filtered.reduce((acc, t) => {
-        const amount = parseFloat(t.amount) || 0;
-        if (t.type === 'INCOME') acc.inc += amount;
-        else acc.exp += amount;
-        return acc;
-    }, { inc: 0, exp: 0 });
-
-    return { ...stats, bal: stats.inc - stats.exp };
-}, [transactions, filterMonth, activeTab, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
-
-const navigateToExtrato = (isSecondary, filter = 'ALL') => {
-    setViewSecondaryTransactions(isSecondary);
-    setTypeFilter(filter);
-    setActiveTab('transactions');
-};
-
-/**
- * Exportação de Relatório Financeiro em PDF
- */
-const exportPDF = () => {
-    // Verificação de segurança para a biblioteca
-    if (!window.jspdf) {
-        alert("Erro: Biblioteca PDF não carregada. Verifique sua conexão.");
-        return;
-    }
-    const { jsPDF } = window.jspdf;
-    const docPDF = new jsPDF();
-    
-    docPDF.setFontSize(16);
-    const title = viewSecondaryTransactions ? secondaryName : profileName;
-    const periodText = (balanceMode === 'ACCUMULATED' && accumStart && accumEnd) 
-        ? `Período: ${new Date(accumStart).toLocaleDateString()} - ${new Date(accumEnd).toLocaleDateString()}`
-        : (balanceMode === 'ACCUMULATED' ? 'Período: Geral' : `Mês: ${filterMonth}`);
-    
-    docPDF.text(`${title} - Relatório Financeiro`, 14, 15);
-    docPDF.setFontSize(10);
-    docPDF.text(periodText, 14, 22);
-    
-    const rows = currentTransactions.map(t => [
-        new Date(t.date).toLocaleDateString('pt-BR'), 
-        t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments})` : ''), 
-        t.method || '-', 
-        t.isPaid ? 'Sim' : 'Não',
-        `R$ ${(t.amount || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
-    ]);
-    
-    docPDF.autoTable({ 
-        startY: 28, 
-        head: [['Data', 'Descrição', 'Canal', 'Pago', 'Valor']], 
-        body: rows,
-        theme: 'grid',
-        headStyles: { fillColor: [139, 92, 246] }
-    });
-
-    const finalY = docPDF.lastAutoTable.finalY + 10;
-    docPDF.text(`Total Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}`, 14, finalY);
-    docPDF.text(`Total Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}`, 14, finalY + 5);
-    docPDF.text(`Saldo: R$ ${totals.bal.toLocaleString('pt-BR')}`, 14, finalY + 10);
-    
-    docPDF.save(`financas-${title}.pdf`);
-};
-
-// Efeito para renderizar gráficos
-useEffect(() => {
-    if (activeTab === 'analytics') {
-        const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
-        const ctxBar = document.getElementById('analyticsBarChart');
-        
-        if (ctxDoughnut) {
-            if (doughnutChartRef.current) doughnutChartRef.current.destroy();
-            const hasData = totals.inc > 0 || totals.exp > 0;
-
-            doughnutChartRef.current = new Chart(ctxDoughnut, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Entradas', 'Saídas'],
-                    datasets: [{
-                        data: hasData ? [totals.inc, totals.exp] : [1, 1],
-                        backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
-                        borderWidth: 0,
-                        borderRadius: 5
-                    }]
-                },
-                options: { 
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: { legend: { display: hasData, position: 'bottom' } }
+                try {
+                    if (navigator.share) {
+                        await navigator.share(shareData);
+                    } else {
+                        await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+                        alert("Link de convite e informações de acesso copiados para a área de transferência!");
+                    }
+                } catch (err) {
+                    console.log('Error sharing:', err);
                 }
-            });
-        }
+            };
 
-        if (ctxBar) {
-            if (barChartRef.current) barChartRef.current.destroy();
-            const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
-            const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
-            const methodColors = { 'PIX': '#10b981', 'CREDITO': '#8b5cf6', 'DEBITO': '#0ea5e9', 'DINHEIRO': '#f59e0b' };
+            // Memoized: Transações filtradas para exibição atual
+            const currentTransactions = useMemo(() => {
+                let base;
+                // Escolha da base (Principal vs Secundária)
+                if (activeTab === 'transactions' || activeTab === 'analytics') {
+                    base = viewSecondaryTransactions ? transactions.filter(t => t.isSecondary) : transactions.filter(t => !t.isSecondary);
+                } else if (activeTab === 'secondary') {
+                    base = transactions.filter(t => t.isSecondary);
+                } else {
+                    base = transactions.filter(t => !t.isSecondary);
+                }
 
-            const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
-            const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
+                // Filtragem por Período
+                let filteredByDate = base;
+                if (balanceMode === 'ACCUMULATED') {
+                    if (accumStart && accumEnd) {
+                        filteredByDate = base.filter(t => {
+                            const d = (t.date || '').split('T')[0];
+                            return d >= accumStart && d <= accumEnd;
+                        });
+                    }
+                } else {
+                    filteredByDate = base.filter(t => (t.date || '').startsWith(filterMonth));
+                }
 
-            barChartRef.current = new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: methodLabels,
-                    datasets: [
-                        { label: 'Entradas', data: incomeCounts, backgroundColor: methods.map(m => methodColors[m] + 'CC') },
-                        { label: 'Saídas', data: expenseCounts, backgroundColor: methods.map(m => methodColors[m] + '66') }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-    }
-}, [activeTab, currentTransactions, totals]);
+                // Filtragem por Tipo e Canal
+                return filteredByDate
+                           .filter(t => typeFilter === 'ALL' ? true : t.type === typeFilter)
+                           .filter(t => methodFilter === 'ALL' ? true : t.method === methodFilter);
+            }, [transactions, activeTab, filterMonth, typeFilter, methodFilter, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
+
+            // Memoized: Totais (Entradas, Saídas e Saldo)
+            const totals = useMemo(() => {
+                const base = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions) || (activeTab === 'analytics' && viewSecondaryTransactions)) 
+                    ? transactions.filter(t => t.isSecondary) 
+                    : transactions.filter(t => !t.isSecondary);
+
+                let filtered = base;
+                if (balanceMode === 'ACCUMULATED') {
+                    if (accumStart && accumEnd) {
+                        filtered = base.filter(t => {
+                            const d = (t.date || '').split('T')[0];
+                            return d >= accumStart && d <= accumEnd;
+                        });
+                    }
+                } else {
+                    filtered = base.filter(t => (t.date || '').startsWith(filterMonth));
+                }
+
+                const stats = filtered.reduce((acc, t) => {
+                    const amount = parseFloat(t.amount) || 0;
+                    if (t.type === 'INCOME') acc.inc += amount;
+                    else acc.exp += amount;
+                    return acc;
+                }, { inc: 0, exp: 0 });
+
+                return { ...stats, bal: stats.inc - stats.exp };
+            }, [transactions, filterMonth, activeTab, viewSecondaryTransactions, balanceMode, accumStart, accumEnd]);
+
+            /**
+             * Navegada para aba de extrato configurada
+             */
+            const navigateToExtrato = (isSecondary, filter = 'ALL') => {
+                setViewSecondaryTransactions(isSecondary);
+                setTypeFilter(filter);
+                setActiveTab('transactions');
+            };
+
+            /**
+             * Exportação de Relatório Financeiro em PDF
+             */
+            const exportPDF = () => {
+                const { jsPDF } = window.jspdf;
+                const docPDF = new jsPDF();
+                docPDF.setFontSize(16);
+                const title = viewSecondaryTransactions ? secondaryName : profileName;
+                const periodText = (balanceMode === 'ACCUMULATED' && accumStart && accumEnd) 
+                    ? `Período: ${new Date(accumStart).toLocaleDateString()} - ${new Date(accumEnd).toLocaleDateString()}`
+                    : (balanceMode === 'ACCUMULATED' ? 'Período: Geral (Todos os meses)' : `Mês: ${filterMonth}`);
+                
+                docPDF.text(`${title} - Relatório Financeiro`, 14, 15);
+                docPDF.setFontSize(10);
+                docPDF.text(periodText, 14, 22);
+                
+                const rows = currentTransactions.map(t => [
+                    new Date(t.date).toLocaleDateString('pt-BR'), 
+                    t.description + (t.totalInstallments ? ` (${t.currentInstallment}/${t.totalInstallments} - Total R$ ${(t.totalValue || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})` : ''), 
+                    t.method || '-', 
+                    t.isPaid ? 'Sim' : 'Não',
+                    `R$ ${(t.amount || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
+                ]);
+                
+                docPDF.autoTable({ 
+                    startY: 28, 
+                    head: [['Data', 'Descrição', 'Canal', 'Pago', 'Valor']], 
+                    body: rows,
+                    theme: 'grid',
+                    headStyles: { fillColor: [139, 92, 246] }
+                });
+
+                const finalY = docPDF.lastAutoTable.finalY + 10;
+                docPDF.text(`Total Entradas: R$ ${totals.inc.toLocaleString('pt-BR')}`, 14, finalY);
+                docPDF.text(`Total Saídas: R$ ${totals.exp.toLocaleString('pt-BR')}`, 14, finalY + 5);
+                docPDF.text(`Saldo do Período: R$ ${totals.bal.toLocaleString('pt-BR')}`, 14, finalY + 10);
+                
+                docPDF.save(`financas-${title}-${new Date().getTime()}.pdf`);
+            };
+
+            // Efeito para renderizar gráficos
+            useEffect(() => {
+                if (activeTab === 'analytics') {
+                    const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+                    const ctxBar = document.getElementById('analyticsBarChart');
+                    
+                    if (ctxDoughnut) {
+                        if (doughnutChartRef.current) doughnutChartRef.current.destroy();
+                        
+                        const hasData = totals.inc > 0 || totals.exp > 0;
+
+                        doughnutChartRef.current = new Chart(ctxDoughnut, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Entradas', 'Saídas'],
+                                datasets: [{
+                                    data: hasData ? [totals.inc, totals.exp] : [1, 1],
+                                    backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
+                                    hoverOffset: 12,
+                                    borderWidth: 0,
+                                    borderRadius: 5
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                cutout: '70%',
+                                plugins: {
+                                    legend: {
+                                        display: hasData,
+                                        position: 'bottom',
+                                        labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    if (ctxBar) {
+                        if (barChartRef.current) barChartRef.current.destroy();
+
+                        const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+                        const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
+                        const methodColors = {
+                            'PIX': '#10b981',
+                            'CREDITO': '#8b5cf6',
+                            'DEBITO': '#0ea5e9',
+                            'DINHEIRO': '#f59e0b'
+                        };
+
+                        const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
+                        const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
+
+                        barChartRef.current = new Chart(ctxBar, {
+                            type: 'bar',
+                            data: {
+                                labels: methodLabels,
+                                datasets: [
+                                    {
+                                        label: 'Qtd Entradas',
+                                        data: incomeCounts,
+                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'),
+                                        borderColor: methods.map(m => methodColors[m]),
+                                        borderWidth: 2,
+                                        borderRadius: 6
+                                    },
+                                    {
+                                        label: 'Qtd Saídas',
+                                        data: expenseCounts,
+                                        backgroundColor: methods.map(m => methodColors[m] + '66'),
+                                        borderColor: methods.map(m => methodColors[m]),
+                                        borderWidth: 1,
+                                        borderRadius: 6,
+                                        borderDash: [5, 5]
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { color: '#64748b', stepSize: 1, font: { size: 10 } },
+                                        grid: { color: '#1e293b' }
+                                    },
+                                    x: {
+                                        ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+                                        grid: { display: false }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: '#0f172a',
+                                        titleFont: { size: 12 },
+                                        bodyFont: { size: 11 },
+                                        padding: 12,
+                                        cornerRadius: 12
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }, [activeTab, currentTransactions, totals]);
 
             // Tela de Carregamento Inicial
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;
