@@ -353,42 +353,61 @@
 
     setUser(userData);
 
-    // 🔥 SUGESTÕES / NOTIFICAÇÕES
+    // 🔔 SUGESTÕES / NOTIFICAÇÕES
     if (unsubSugg) unsubSugg();
 
     if (isAdmin) {
-  const qs = query(
-    collection(db, "suggestions"),
-    orderBy("createdAt", "desc")
-  );
+      const qs = query(
+        collection(db, "suggestions"),
+        orderBy("createdAt", "desc")
+      );
 
-  unsubSugg = onSnapshot(qs, (snap) => {
-    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setAdminSuggestions(all);
+      unsubSugg = onSnapshot(qs, (snap) => {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAdminSuggestions(all);
 
-    // 🔔 Sino do ADM = sugestões sem resposta ainda
-    const unreadAdmin = all.filter(s => !s.reply || s.reply === "").length;
-    setUnreadCount(unreadAdmin);
+        // 🔔 Sino do ADM = sugestões sem resposta
+        const unreadAdmin = all.filter(s => !s.reply || s.reply === "").length;
+        setUnreadCount(unreadAdmin);
+      });
+
+    } else {
+      const qsUser = query(
+        collection(db, "suggestions"),
+        where("userId", "==", sid)
+      );
+
+      unsubSugg = onSnapshot(qsUser, (snap) => {
+        const userSugs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUserSuggestions(userSugs);
+
+        // 🔔 Sino do Usuário = respostas novas
+        const unreadUser = userSugs.filter(
+          s => s.reply && s.replyViewed === false
+        ).length;
+
+        setUnreadCount(unreadUser);
+      });
+    }
+  }); // ✅ FECHA onSnapshot do usuário
+
+  // 🔄 TRANSAÇÕES
+  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+  unsubTx = onSnapshot(qTx, (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(
+      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    );
+    setLoading(false);
   });
 
-} else {
-  const qsUser = query(
-    collection(db, "suggestions"),
-    where("userId", "==", sid)
-  );
+  return () => {
+    unsubUser();
+    unsubTx();
+    if (unsubSugg) unsubSugg();
+  };
+};
 
-  unsubSugg = onSnapshot(qsUser, (snap) => {
-    const userSugs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    setUserSuggestions(userSugs);
-
-    // 🔔 Sino do Usuário = respostas novas do ADM
-    const unreadUser = userSugs.filter(
-      s => s.reply && s.replyViewed === false
-    ).length;
-
-    setUnreadCount(unreadUser);
-  });
-}
 
 
   // 🔄 TRANSAÇÕES
