@@ -1627,7 +1627,7 @@ const markReplyAsViewed = async (sugId) => {
 </div>
 
 ${isAdmin && html`
-  <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-4 shadow-xl mt-6">
+  <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-4 shadow-xl mt-6">
     <h4 className="text-sm font-black text-white uppercase tracking-wider">
       📩 Painel do Administrador
     </h4>
@@ -1638,16 +1638,17 @@ ${isAdmin && html`
 
     <select
       className="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold ring-1 ring-slate-700"
+      value=${selectedUserId}
       onChange=${e => setSelectedUserId(e.target.value)}
     >
       <option value="">Selecione o usuário</option>
-      ${users.map(u => html`
+      ${users && users.length > 0 ? users.map(u => html`
         <option value=${u.id}>${u.name || u.email}</option>
-      `)}
+      `) : html`<option disabled>Nenhum usuário encontrado</option>`}
     </select>
 
     <textarea
-      className="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold ring-1 ring-slate-700"
+      className="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold ring-1 ring-slate-700 resize-none"
       rows="3"
       placeholder="Digite a mensagem..."
       value=${adminMessageText}
@@ -1655,8 +1656,14 @@ ${isAdmin && html`
     ></textarea>
 
     <button
-      className="w-full bg-violet-600 py-2 rounded-xl font-black text-xs"
-      onClick=${() => sendAdminMessage(selectedUserId)}
+      className="w-full bg-violet-600 py-2 rounded-xl font-black text-xs hover:bg-violet-700 transition-colors"
+      onClick=${() => {
+        if (!selectedUserId || !adminMessageText.trim()) {
+          alert('Selecione um usuário e digite a mensagem antes de enviar.');
+          return;
+        }
+        sendAdminMessage(selectedUserId);
+      }}
     >
       Enviar Mensagem
     </button>
