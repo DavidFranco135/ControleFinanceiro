@@ -335,14 +335,38 @@
                 
                 // Monitoramento de dados do usuário
                 const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-                    if (s.exists()) {
-                        const userData = { id: s.id, ...s.data() };
-                        // Bloqueio de segurança para usuários não pagos (exceto adm)
-                        if (userData.email.toLowerCase() !== 'niklaus' && userData.status !== 'paid') {
-                             alert("Acesso Bloqueado.");
-                             handleLogout();
-                             return;
-                        }
+    if (s.exists()) {
+        const userData = { id: s.id, ...s.data() };
+        const isAdmin = userData.email.toLowerCase() === "davidbhmg147@gmail.com";
+
+        if (!isAdmin && userData.status !== 'paid') {
+            alert("Acesso Bloqueado.");
+            handleLogout();
+            return;
+        }
+
+        setUser(userData);
+
+        // 🔥 AGORA SIM: sincroniza sugestões corretamente
+        let unsubSugg = () => {};
+
+        if (isAdmin) {
+            const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+            unsubSugg = onSnapshot(qs, (sugSnap) => {
+                setAdminSuggestions(sugSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            });
+        } else {
+            const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+            unsubSugg = onSnapshot(qsUser, (sugSnap) => {
+                const suggestions = sugSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setUserSuggestions(suggestions);
+                const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
+                setUnreadCount(unread);
+            });
+        }
+    } else handleLogout();
+});
+
                         setUser(userData);
                         setProfileName(userData.appName || 'Meu Perfil');
                         setSecondaryName(userData.secondaryName || 'Conta 2');
@@ -366,12 +390,13 @@
 
                 // Monitoramento de sugestões (feedback do admin)
                 let unsubSugg = () => {};
-                if (sid === 'niklaus') {
-                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                    unsubSugg = onSnapshot(qs, (s) => {
-                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
-                } else {
+                if (userData.email.toLowerCase() === "davidbhmg147@gmail.com") {
+    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+    unsubSugg = onSnapshot(qs, (s) => {
+        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+}
+ else {
                     const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
                     unsubSugg = onSnapshot(qsUser, (s) => {
                         const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
