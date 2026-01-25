@@ -220,6 +220,10 @@
     const fbApp = initializeApp(firebaseConfig);
     const auth = getAuth(fbApp);
     const db = getFirestore(fbApp);
+       const [adminMessageText, setAdminMessageText] = React.useState("");
+       const [inboxMessages, setInboxMessages] = React.useState([]);
+       
+
 
         // ... Resto dos sons e componentes (Avatar, etc) ...
 
@@ -309,6 +313,8 @@
             const [adminSuggestions, setAdminSuggestions] = useState([]);
             const [unreadCount, setUnreadCount] = useState(0);
             const [showNotificationList, setShowNotificationList] = useState(false);
+            const [users, setUsers] = React.useState([]);
+
 
             const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'niklaus', [user]);
 
@@ -780,6 +786,27 @@ const sendSuggestion = async () => {
         setSendingSuggestion(false); 
     }
 };
+// 👉 ADMIN envia mensagem para usuário
+const sendAdminMessage = async (toUserId, toUserName) => {
+  if (!adminMessageText.trim() || !toUserId) return;
+
+  try {
+    await addDoc(collection(db, "messages"), {
+      from: "admin",
+      toUserId,
+      toUserName,
+      message: adminMessageText.trim(),
+      createdAt: serverTimestamp(),
+      viewed: false
+    });
+
+    setAdminMessageText("");
+    alert("Mensagem enviada ao usuário!");
+  } catch (err) {
+    console.error("Erro ao enviar mensagem:", err);
+    alert("Erro ao enviar mensagem.");
+  }
+};
 
 // Função exclusiva para o Niklaus responder
 const sendReply = async (sugId, replyText) => {
@@ -933,6 +960,18 @@ const markReplyAsViewed = async (sugId) => {
             };
 
             // Efeito para renderizar gráficos
+            useEffect(() => {
+  if (!isAdmin) return;
+
+  const q = query(collection(db, "users"));
+  const unsub = onSnapshot(q, snap => {
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setUsers(list);
+  });
+
+  return () => unsub();
+}, [isAdmin]);
+
             useEffect(() => {
                 if (activeTab === 'analytics') {
                     const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
@@ -1561,12 +1600,69 @@ const markReplyAsViewed = async (sugId) => {
                 </div>
             </div>
 
-            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
-                <div className="relative z-10">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl shadow-inner">
-                            <i className="fas fa-gift"></i>
-                        </div>
+           <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
+    <div className="relative z-10">
+        <div className="flex items-center gap-4 mb-4">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-xl shadow-inner">
+                <i className="fas fa-gift"></i>
+            </div>
+            <div>
+                <h4 className="font-black uppercase text-sm tracking-tighter">Convidar Amigo</h4>
+                <p className="text-[10px] opacity-80 font-bold">Indique o app para um amigo!</p>
+            </div>
+        </div>
+
+        <button onClick=${() => {
+            if (navigator.share) {
+                navigator.share({ title: 'App Finanças', text: 'Estou usando este app para gerenciar minhas contas!', url: window.location.href });
+            } else {
+                alert('Link de convite copiado!');
+            }
+        }} className="w-full bg-violet-600 text-white py-5 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-100 transition-all shadow-xl shadow-black/20">
+            Enviar Convite
+        </button>
+    </div>
+    <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
+</div>
+
+${isAdmin && html`
+  <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-4 shadow-xl mt-6">
+    <h4 className="text-sm font-black text-white uppercase tracking-wider">
+      📩 Painel do Administrador
+    </h4>
+
+    <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+      Enviar mensagem para usuário
+    </label>
+
+    <select
+      className="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold ring-1 ring-slate-700"
+      onChange=${e => setSelectedUserId(e.target.value)}
+    >
+      <option value="">Selecione o usuário</option>
+      ${users.map(u => html`
+        <option value=${u.id}>${u.name || u.email}</option>
+      `)}
+    </select>
+
+    <textarea
+      className="w-full p-3 bg-slate-800 text-white rounded-xl text-xs font-bold ring-1 ring-slate-700"
+      rows="3"
+      placeholder="Digite a mensagem..."
+      value=${adminMessageText}
+      onInput=${e => setAdminMessageText(e.target.value)}
+    ></textarea>
+
+    <button
+      className="w-full bg-violet-600 py-2 rounded-xl font-black text-xs"
+      onClick=${() => sendAdminMessage(selectedUserId)}
+    >
+      Enviar Mensagem
+    </button>
+  </div>
+`}
+
+
                         <div>
                             <h4 className="font-black uppercase text-sm tracking-tighter">Convidar Amigo</h4>
                             <p className="text-[10px] opacity-80 font-bold">Indique o app para um amigo!</p>
