@@ -751,21 +751,32 @@ const generateAIAdvice = async () => {
 
 // Função para o Usuário enviar
 const sendSuggestion = async () => {
-  if (!suggestionText.trim()) return;
+  if (!suggestionText.trim() || !user?.id) return;
 
   setSendingSuggestion(true);
+
   try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
-      userName: user.appName || user.email,
+      userName: profileName || "Usuário",
+      userEmail: user.email || "",
       message: suggestionText.trim(),
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+
+      // campos usados na comunicação
+      reply: "",
+      repliedAt: null,
+      replyViewed: false
     });
-    setSuggestionText('');
-  } catch (e) {
-    alert("Erro ao enviar sugestão");
+
+    setSuggestionText("");
+    alert("Obrigado! Sua mensagem foi enviada com sucesso!");
+  } catch (err) {
+    console.error("Erro ao enviar sugestão:", err);
+    alert("Erro ao enviar a mensagem. Tente novamente.");
+  } finally {
+    setSendingSuggestion(false);
   }
-  setSendingSuggestion(false);
 };
 
 
