@@ -7,28 +7,13 @@
     <title>Finanças</title>
     
     <!-- Configurações para Web App (PWA) e Favicons -->
-    <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-touch-fullscreen" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://img.icons8.com/fluency/192/money-bag.png">
     <link rel="icon" type="image/png" sizes="32x32" href="https://img.icons8.com/fluency/32/money-bag.png">
     <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/fluency/192/money-bag.png">
     
     <!-- Importação de bibliotecas externas -->
-    <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    // Sua configuração aqui (colors, theme, etc)
-    theme: {
-      extend: {
-        colors: {
-          violet: { 600: '#7c3aed' }
-        }
-      }
-    }
-  }
-</script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -330,100 +315,98 @@
             /**
              * Inicia a sincronização de dados em tempo real com o Firestore
              */
-            const startDataSync = (sid) => {
-                setLoading(true);
+            // ... dentro do seu componente App ...
+
+/**
+ * Inicia a sincronização de dados em tempo real com o Firestore
+ */
+const startDataSync = (sid) => {
+    setLoading(true);
+    
+    // 1. Monitoramento de dados do usuário
+    const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+        if (s.exists()) {
+            const userData = { id: s.id, ...s.data() };
+            
+            // Verificação de Admin (E-mail ou isAdmin string "true")
+            const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
+            
+            if (!isNiklaus && userData.status !== 'paid') {
+                 alert("Acesso Bloqueado.");
+                 handleLogout();
+                 return;
+            }
+
+            setUser(userData);
+            setProfileName(userData.appName || 'Meu Perfil');
+            setSecondaryName(userData.secondaryName || 'Conta 2');
+            setProfilePhoto(userData.photoURL || '');
+            setSecondaryPhoto(userData.secondaryPhotoURL || '');
+            setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
+
+            // 2. Monitoramento de Sugestões (Dentro do unsubUser para garantir isNiklaus)
+            let qs;
+            if (isNiklaus) {
+                // Admin vê tudo
+                qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+            } else {
+                // Usuário vê só as dele
+                qs = query(collection(db, "suggestions"), where("userId", "==", sid));
+            }
+
+            const unsubSugg = onSnapshot(qs, (snap) => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
-                // Monitoramento de dados do usuário
-                const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (s.exists()) {
-        const userData = { id: s.id, ...s.data() };
-        const isAdmin = userData.email.toLowerCase() === "davidbhmg147@gmail.com";
+                // IMPORTANTE: Atualiza o estado que o seu HTML usa (verifique o nome correto)
+                setAdminSuggestions(list); 
+                setUserSuggestions(list); 
+                
+                // Se o seu HTML usa uma variável chamada 'suggestions', adicione a linha abaixo:
+                // setSuggestions(list); 
 
-        if (!isAdmin && userData.status !== 'paid') {
-            alert("Acesso Bloqueado.");
-            handleLogout();
-            return;
-        }
-
-        setUser(userData);
-
-        // 🔥 AGORA SIM: sincroniza sugestões corretamente
-        let unsubSugg = () => {};
-
-        if (isAdmin) {
-            const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-            unsubSugg = onSnapshot(qs, (sugSnap) => {
-                setAdminSuggestions(sugSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-            });
-        } else {
-            const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-            unsubSugg = onSnapshot(qsUser, (sugSnap) => {
-                const suggestions = sugSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-                setUserSuggestions(suggestions);
-                const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-                setUnreadCount(unread);
-            });
-        }
-    } else handleLogout();
-});
-
-
-                // Monitoramento das transações do usuário
-                const q = query(collection(db, "transactions"), where("userId", "==", sid));
-                const unsubTx = onSnapshot(q, (s) => {
-                    const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-                    setTransactions(docs.sort((a, b) => {
-                        const dateA = a.createdAt?.seconds || 0;
-                        const dateB = b.createdAt?.seconds || 0;
-                        return dateB - dateA;
-                    }));
-                    setLoading(false);
-                });
-
-                // Monitoramento de sugestões (feedback do admin)
-                let unsubSugg = () => {};
-                if (sid === 'niklaus') {
-                    const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                    unsubSugg = onSnapshot(qs, (s) => {
-                        setAdminSuggestions(s.docs.map(d => ({ id: d.id, ...d.data() })));
-                    });
+                // Lógica de Notificações
+                if (isNiklaus) {
+                    setUnreadCount(list.filter(sug => !sug.reply || sug.status === 'unread').length);
                 } else {
-                    const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                    unsubSugg = onSnapshot(qsUser, (s) => {
-                        const suggestions = s.docs.map(d => ({ id: d.id, ...d.data() }));
-                        setUserSuggestions(suggestions);
-                        const unread = suggestions.filter(sug => sug.reply && sug.replyViewed === false).length;
-                        setUnreadCount(unread);
-                    });
+                    setUnreadCount(list.filter(sug => sug.reply && sug.replyViewed === false).length);
                 }
+            });
 
-                return () => { unsubUser(); unsubTx(); unsubSugg(); };
-            };
+            // Guardar para limpeza
+            window.activeUnsubSugg = unsubSugg;
+        } else {
+            handleLogout();
+        }
+    });
 
-            // Efeito para checar persistência de login ao carregar
-            useEffect(() => {
-                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
-                if (sid) return startDataSync(sid);
-                setLoading(false);
-            }, []);
+    // 3. Monitoramento das transações
+    const q = query(collection(db, "transactions"), where("userId", "==", sid));
+    const unsubTx = onSnapshot(q, (s) => {
+        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        setLoading(false); // Só tira o loading aqui
+    });
 
-            // Efeito para fechar dropdown de notificações ao clicar fora
-            useEffect(() => {
-                const handleClickOutside = (event) => {
-                    if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-                        setShowNotificationList(false);
-                    }
-                };
-                document.addEventListener('mousedown', handleClickOutside);
-                return () => document.removeEventListener('mousedown', handleClickOutside);
-            }, []);
+    return () => { 
+        unsubUser(); 
+        unsubTx(); 
+        if (window.activeUnsubSugg) window.activeUnsubSugg(); 
+    };
+};
+    // 2. Monitoramento das transações
+    const q = query(collection(db, "transactions"), where("userId", "==", sid));
+    const unsubTx = onSnapshot(q, (s) => {
+        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
+        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        setLoading(false);
+    });
 
-            // Notificações formatadas (respostas do admin)
-            const notifications = useMemo(() => {
-                return [...userSuggestions]
-                    .filter(sug => sug.reply)
-                    .sort((a, b) => (b.repliedAt?.seconds || 0) - (a.repliedAt?.seconds || 0));
-            }, [userSuggestions]);
+    return () => { 
+        unsubUser(); 
+        unsubTx(); 
+        if (window.unsubSugg) window.unsubSugg(); 
+    };
+};
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
@@ -777,38 +760,53 @@ const generateAIAdvice = async () => {
 const sendSuggestion = async () => {
     if (!suggestionText.trim()) return;
     setSendingSuggestion(true);
+    
     try {
+        // Adicionamos o campo 'status' para controlar as notificações no seu painel
         await addDoc(collection(db, "suggestions"), {
             userId: user.id,
-            userName: profileName || 'Usuário', // Importante para você saber quem mandou
+            userName: profileName || 'Usuário',
             userEmail: user.email,
             message: suggestionText,
-            createdAt: serverTimestamp(),
+            createdAt: serverTimestamp(), // Certifique-se de que serverTimestamp foi importado do firestore
+            status: "unread",  // <--- ESSENCIAL: Isso fará a bolinha de notificação aparecer para você
             reply: null,
             repliedAt: null,
             replyViewed: false
         });
+
         setSuggestionText('');
-        alert("Obrigado! Sua sugestão foi enviada com sucesso.");
+        
+        // Feedback visual mais moderno
+        if (typeof toast !== 'undefined') {
+            toast.success("Sugestão enviada! Niklaus será notificado.");
+        } else {
+            alert("Obrigado! Sua sugestão foi enviada e o administrador foi notificado.");
+        }
     } catch (e) { 
-        alert("Erro ao enviar sugestão."); 
+        console.error("Erro ao enviar:", e);
+        alert("Erro ao enviar sugestão. Verifique sua conexão."); 
     } finally { 
         setSendingSuggestion(false); 
     }
 };
 
 // Função exclusiva para o Niklaus responder
-const sendReply = async (sugId, replyText) => {
-    if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
+const sendReply = async (suggestionId, replyText) => {
+    if (!replyText.trim()) return;
+    
     try {
-        await updateDoc(doc(db, "suggestions", sugId), {
+        const docRef = doc(db, "suggestions", suggestionId);
+        await updateDoc(docRef, {
             reply: replyText,
             repliedAt: serverTimestamp(),
-            replyViewed: false
+            status: "read", // Quando você responde, ela deixa de ser "não lida"
+            replyViewed: false // Para o usuário receber a bolinha de notificação
         });
         alert("Resposta enviada com sucesso!");
     } catch (e) {
         console.error("Erro ao responder:", e);
+        alert("Erro ao enviar resposta.");
     }
 };
 
