@@ -220,8 +220,7 @@
     const fbApp = initializeApp(firebaseConfig);
     const auth = getAuth(fbApp);
     const db = getFirestore(fbApp);
-       const [adminMessageText, setAdminMessageText] = React.useState("");
-       const [inboxMessages, setInboxMessages] = React.useState([]);
+       
        
 
 
@@ -262,6 +261,8 @@
             const [methodFilter, setMethodFilter] = useState('ALL');
             const [showValues, setShowValues] = useState(true);
             const [soundEnabled, setSoundEnabled] = useState(true);
+            const [adminMessageText, setAdminMessageText] = React.useState("");
+            const [inboxMessages, setInboxMessages] = React.useState([]);
             
             // Modos de Balanço (Mensal vs Acumulado/Personalizado)
             const [balanceMode, setBalanceMode] = useState('MONTHLY');
