@@ -353,7 +353,7 @@
 
     setUser(userData);
 
-    // 🔥 SUGESTÕES / NOTIFICAÇÕES
+    // 🔔 SUGESTÕES / NOTIFICAÇÕES
     if (unsubSugg) unsubSugg();
 
     if (isAdmin) {
@@ -366,9 +366,9 @@
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setAdminSuggestions(all);
 
-        // 🔔 Sino do ADM: sugestões novas não vistas
-        const unreadAdmin = all.filter(s => !s.adminViewed).length;
-        setAdminUnreadCount(unreadAdmin);
+        // 🔔 Sino do ADM = sugestões sem resposta
+        const unreadAdmin = all.filter(s => !s.reply || s.reply === "").length;
+        setUnreadCount(unreadAdmin);
       });
 
     } else {
@@ -381,7 +381,7 @@
         const userSugs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setUserSuggestions(userSugs);
 
-        // 🔔 Sino do Usuário: respostas novas
+        // 🔔 Sino do Usuário = respostas novas
         const unreadUser = userSugs.filter(
           s => s.reply && s.replyViewed === false
         ).length;
@@ -389,7 +389,26 @@
         setUnreadCount(unreadUser);
       });
     }
+  }); // ✅ FECHA onSnapshot do usuário
+
+  // 🔄 TRANSAÇÕES
+  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+  unsubTx = onSnapshot(qTx, (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(
+      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    );
+    setLoading(false);
   });
+
+  return () => {
+    unsubUser();
+    unsubTx();
+    if (unsubSugg) unsubSugg();
+  };
+};
+
+
 
   // 🔄 TRANSAÇÕES
   const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
