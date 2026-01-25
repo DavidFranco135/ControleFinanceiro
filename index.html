@@ -809,6 +809,12 @@ const sendSuggestion = async () => {
   setSendingSuggestion(true);
 
   try {
+    const sendSuggestion = async () => {
+  if (!suggestionText.trim() || !user?.id) return;
+
+  setSendingSuggestion(true);
+
+  try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
       userName: profileName || "Usuário",
@@ -834,7 +840,6 @@ const sendSuggestion = async () => {
     setSendingSuggestion(false);
   }
 };
-
 
 
 /**
