@@ -121,6 +121,39 @@ app.get("/sugestoes", async (req, res) => {
   }
 });
 
+// POST /responder-mensagem-adicional
+app.post("/responder-mensagem-adicional", async (req, res) => {
+  try {
+    const { sugestaoId, mensagem } = req.body;
+    if (!sugestaoId || !mensagem) return res.status(400).json({ erro: "Faltando dados" });
+
+    const sugRef = db.collection("sugestoes").doc(sugestaoId);
+
+    // Salva a nova resposta em uma subcoleção
+    await sugRef.collection("respostas").add({
+      de: "admin",
+      mensagem,
+      data: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Também envia mensagem para o usuário
+    const sugDoc = await sugRef.get();
+    const userId = sugDoc.data().userId;
+
+    await db.collection("mensagens").add({
+      de: "admin",
+      para: userId,
+      mensagem,
+      data: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    res.json({ sucesso: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao enviar mensagem adicional" });
+  }
+});
+
 // ========================
 // ROTA PARA RESPONDER SUGESTÃO (ADMIN)
 // ========================
