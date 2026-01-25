@@ -1579,31 +1579,40 @@ const markReplyAsViewed = async (sugId) => {
 
     ${user.email === 'davidbhmg147@gmail.com' ? html`
         <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-            ${suggestions.length === 0 ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` : ''}
-            ${suggestions.map(sug => html`
-                <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
-                    <div className="flex justify-between mb-2">
-                        <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName}</span>
-                        <span className="text-[8px] text-slate-600">${new Date(sug.createdAt?.toDate()).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
-                    
-                    ${sug.reply ? html`
-                        <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
-                            <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
-                        </div>
-                    ` : html`
-                        <div className="flex gap-2">
-                            <input type="text" id=${`reply-${sug.id}`} placeholder="Responder..." className="flex-1 bg-slate-800 border-0 rounded-lg text-[10px] p-2 text-white outline-none" />
-                            <button onClick=${() => {
-                                const input = document.getElementById(`reply-${sug.id}`);
-                                sendReply(sug.id, input.value);
-                                input.value = '';
-                            }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]"><i className="fas fa-paper-plane"></i></button>
-                        </div>
-                    `}
-                </div>
-            `)}
+           ${adminSuggestions.length === 0 
+  ? html`<p className="text-[10px] text-slate-500 text-center uppercase">Nenhuma sugestão nova.</p>` 
+  : ''}
+
+${adminSuggestions.map(sug => html`
+  <div className="p-4 bg-slate-950 rounded-2xl border border-slate-800">
+    <div className="flex justify-between mb-2">
+      <span className="text-[8px] font-black text-violet-400 uppercase">${sug.userName}</span>
+      <span className="text-[8px] text-slate-600">
+        ${sug.createdAt?.toDate ? new Date(sug.createdAt.toDate()).toLocaleDateString() : ''}
+      </span>
+    </div>
+    <p className="text-xs text-slate-300 mb-3">${sug.message}</p>
+
+    ${sug.reply ? html`
+      <div className="mt-2 p-2 bg-violet-600/10 rounded-xl border border-violet-600/20">
+        <p className="text-[10px] text-violet-400 font-bold">Sua resposta: ${sug.reply}</p>
+      </div>
+    ` : html`
+      <div className="flex gap-2">
+        <input type="text" id=${`reply-${sug.id}`} placeholder="Responder..." className="flex-1 bg-slate-800 border-0 rounded-lg text-[10px] p-2 text-white outline-none" />
+        <button onClick=${() => {
+          const input = document.getElementById(`reply-${sug.id}`);
+          if (!input.value) return;
+          sendReply(sug.id, input.value);
+          input.value = '';
+        }} className="bg-violet-600 px-3 rounded-lg text-white text-[10px]">
+          <i className="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    `}
+  </div>
+`)}
+
         </div>
     ` : html`
         <div className="space-y-4">
