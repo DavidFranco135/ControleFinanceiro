@@ -334,9 +334,13 @@
   setLoading(true);
 
   let unsubSugg = () => {};
+  let unsubTx = () => {};
 
   const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (!s.exists()) return handleLogout();
+    if (!s.exists()) {
+      handleLogout();
+      return;
+    }
 
     const userData = { id: s.id, ...s.data() };
     const isAdmin = userData.email?.toLowerCase() === "davidbhmg147@gmail.com";
@@ -349,38 +353,61 @@
 
     setUser(userData);
 
-    // 👉 cancela listener antigo antes de criar outro
-    unsubSugg();
+    // 🔥 SUGESTÕES / NOTIFICAÇÕES
+    if (unsubSugg) unsubSugg();
 
     if (isAdmin) {
-      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-      unsubSugg = onSnapshot(qs, (snap) => {
-        setAdminSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-    } else {
-      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-      unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
-        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unread);
-      });
-    }
+  const qs = query(
+    collection(db, "suggestions"),
+    orderBy("createdAt", "desc")
+  );
+
+  unsubSugg = onSnapshot(qs, (snap) => {
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setAdminSuggestions(all);
+
+    // 🔔 Sino do ADM = sugestões sem resposta ainda
+    const unreadAdmin = all.filter(s => !s.reply || s.reply === "").length;
+    setUnreadCount(unreadAdmin);
   });
 
-  const q = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(q, (s) => {
-    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+} else {
+  const qsUser = query(
+    collection(db, "suggestions"),
+    where("userId", "==", sid)
+  );
+
+  unsubSugg = onSnapshot(qsUser, (snap) => {
+    const userSugs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setUserSuggestions(userSugs);
+
+    // 🔔 Sino do Usuário = respostas novas do ADM
+    const unreadUser = userSugs.filter(
+      s => s.reply && s.replyViewed === false
+    ).length;
+
+    setUnreadCount(unreadUser);
+  });
+}
+
+
+  // 🔄 TRANSAÇÕES
+  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+  unsubTx = onSnapshot(qTx, (snap) => {
+    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(
+      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    );
     setLoading(false);
   });
 
   return () => {
     unsubUser();
     unsubTx();
-    unsubSugg();
+    if (unsubSugg) unsubSugg();
   };
 };
+
 
 
             // Efeito para checar persistência de login ao carregar
@@ -763,6 +790,12 @@ const sendSuggestion = async () => {
   setSendingSuggestion(true);
 
   try {
+    const sendSuggestion = async () => {
+  if (!suggestionText.trim() || !user?.id) return;
+
+  setSendingSuggestion(true);
+
+  try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
       userName: profileName || "Usuário",
@@ -770,10 +803,13 @@ const sendSuggestion = async () => {
       message: suggestionText.trim(),
       createdAt: serverTimestamp(),
 
-      // campos usados na comunicação
+      // Comunicação
       reply: "",
       repliedAt: null,
-      replyViewed: false
+      replyViewed: false,
+
+      // 🔔 Controle de notificação do ADM
+      adminViewed: false
     });
 
     setSuggestionText("");
@@ -782,34 +818,10 @@ const sendSuggestion = async () => {
     console.error("Erro ao enviar sugestão:", err);
     alert("Erro ao enviar a mensagem. Tente novamente.");
   } finally {
-    setSendingSuggestion(false);   // ✅ FECHADO CORRETAMENTE
+    setSendingSuggestion(false);
   }
 };
 
-
-// Função exclusiva para o Niklaus responder
-const sendReply = async (sugId, replyText) => {
-  if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
-
-  try {
-    await updateDoc(doc(db, "suggestions", sugId), {
-      reply: replyText,
-      repliedAt: serverTimestamp(),
-      replyViewed: false
-    });
-    alert("Resposta enviada com sucesso!");
-  } catch (e) {
-    console.error("Erro ao responder:", e);
-  }
-};
-
-const markReplyAsViewed = async (sugId) => {
-  try {
-    await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
-  } catch (e) { 
-    console.error(e); 
-  }
-};
 
 /**
  * Compartilhamento do app (Web Share API)
