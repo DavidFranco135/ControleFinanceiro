@@ -66,7 +66,7 @@ app.post("/gemini", async (req, res) => {
 app.post("/webhook-kiwify", kiwifyWebhook);
 
 // ========================
-// ROTA PARA ENVIAR MENSAGEM DO ADMIN
+// ROTA PARA ENVIAR MENSAGEM DIRETA (ADMIN -> USUÁRIO)
 // ========================
 app.post("/enviar-mensagem", async (req, res) => {
   try {
@@ -76,6 +76,19 @@ app.post("/enviar-mensagem", async (req, res) => {
       return res.status(400).json({ erro: "Faltando userId ou mensagem" });
     }
 
+    // Criamos uma entrada na coleção de sugestões marcada como "direta" 
+    // para que apareça no histórico do Admin e do Usuário
+    const docRef = await db.collection("sugestoes").add({
+      userId: userId,
+      userName: "Niklaus (Direto)",
+      message: `[MENSAGEM DO ADMIN]: ${mensagem}`,
+      isDirect: true, // Diferencia de uma sugestão comum
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      respondido: true,
+      reply: mensagem
+    });
+
+    // Também enviamos para a coleção de notificações/mensagens se houver
     await db.collection("mensagens").add({
       de: "admin",
       para: userId,
@@ -83,7 +96,7 @@ app.post("/enviar-mensagem", async (req, res) => {
       data: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    res.json({ sucesso: true, msg: "Mensagem enviada ao usuário!" });
+    res.json({ sucesso: true, id: docRef.id });
   } catch (err) {
     console.error(err);
     res.status(500).json({ erro: "Erro ao enviar mensagem" });
@@ -91,12 +104,17 @@ app.post("/enviar-mensagem", async (req, res) => {
 });
 
 // ========================
-// ROTA PARA LISTAR USUÁRIOS (PAINEL ADMIN)
+// ROTA PARA LISTAR TODOS OS USUÁRIOS (PAINEL ADMIN)
 // ========================
 app.get("/usuarios", async (req, res) => {
   try {
+    // Busca todos os usuários para o Dropdown do Admin
     const snapshot = await db.collection("users").get();
-    const usuarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const usuarios = snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      email: doc.data().email,
+      appName: doc.data().appName || doc.data().displayName || "Usuário sem nome"
+    }));
     res.json(usuarios);
   } catch (err) {
     console.error(err);
@@ -105,7 +123,24 @@ app.get("/usuarios", async (req, res) => {
 });
 
 // ========================
-// ROTA PARA LISTAR SUGESTÕES (PAINEL ADMIN)
+// ROTA PARA LISTAR TODO O HISTÓRICO (PAINEL ADMIN)
+// ========================
+app.get("/historico-geral", async (req, res) => {
+  try {
+    const snapshot = await db.collection("sugestoes")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const historico = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(historico);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao buscar histórico" });
+  }
+});
+
+// ========================
+// ROTA PARA LISTAR SUGESTÕES PENDENTES
 // ========================
 app.get("/sugestoes", async (req, res) => {
   try {
@@ -121,39 +156,6 @@ app.get("/sugestoes", async (req, res) => {
   }
 });
 
-// POST /responder-mensagem-adicional
-app.post("/responder-mensagem-adicional", async (req, res) => {
-  try {
-    const { sugestaoId, mensagem } = req.body;
-    if (!sugestaoId || !mensagem) return res.status(400).json({ erro: "Faltando dados" });
-
-    const sugRef = db.collection("sugestoes").doc(sugestaoId);
-
-    // Salva a nova resposta em uma subcoleção
-    await sugRef.collection("respostas").add({
-      de: "admin",
-      mensagem,
-      data: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    // Também envia mensagem para o usuário
-    const sugDoc = await sugRef.get();
-    const userId = sugDoc.data().userId;
-
-    await db.collection("mensagens").add({
-      de: "admin",
-      para: userId,
-      mensagem,
-      data: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    res.json({ sucesso: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ erro: "Erro ao enviar mensagem adicional" });
-  }
-});
-
 // ========================
 // ROTA PARA RESPONDER SUGESTÃO (ADMIN)
 // ========================
@@ -162,10 +164,9 @@ app.post("/responder-sugestao", async (req, res) => {
     const { sugestaoId, resposta } = req.body;
 
     if (!sugestaoId || !resposta) {
-      return res.status(400).json({ erro: "Faltando sugestaoId ou resposta" });
+      return res.status(400).json({ erro: "Faltando dados" });
     }
 
-    // Busca sugestão
     const sugRef = db.collection("sugestoes").doc(sugestaoId);
     const sugDoc = await sugRef.get();
 
@@ -173,38 +174,34 @@ app.post("/responder-sugestao", async (req, res) => {
       return res.status(404).json({ erro: "Sugestão não encontrada" });
     }
 
-    const sugestaoData = sugDoc.data();
-    const userId = sugestaoData.userId;
+    const userId = sugDoc.data().userId;
 
-    // 1️⃣ Salvar resposta na própria sugestão
+    // 1. Atualiza a sugestão com a resposta
     await sugRef.update({
       reply: resposta,
       respondido: true,
       respostaData: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    // 2️⃣ Salvar mensagem do admin para o usuário
+    // 2. Cria notificação/mensagem para o usuário
     await db.collection("mensagens").add({
       de: "admin",
       para: userId,
       mensagem: resposta,
-      data: admin.firestore.FieldValue.serverTimestamp()
+      data: admin.firestore.FieldValue.serverTimestamp(),
+      lida: false
     });
 
     res.json({ sucesso: true });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ erro: "Erro ao responder sugestão" });
+    res.status(500).json({ erro: "Erro ao responder" });
   }
 });
 
-// ========================
 // ROTA TESTE
-// ========================
 app.get("/", (req, res) => res.send("Servidor do Niklaus está Online! 🚀"));
 
-// ========================
 // INICIA SERVIDOR
-// ========================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Servidor rodando na porta ${PORT}`));
