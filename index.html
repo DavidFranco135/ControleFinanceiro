@@ -328,7 +328,7 @@ const startDataSync = (sid) => {
         if (s.exists()) {
             const userData = { id: s.id, ...s.data() };
             
-            // Verificação de Admin (E-mail ou isAdmin string "true")
+            // Verificação de Admin
             const isNiklaus = userData.email?.toLowerCase() === 'davidbhmg147@gmail.com' || userData.isAdmin === "true";
             
             if (!isNiklaus && userData.status !== 'paid') {
@@ -344,25 +344,17 @@ const startDataSync = (sid) => {
             setSecondaryPhoto(userData.secondaryPhotoURL || '');
             setSoundEnabled(userData.soundEnabled !== undefined ? userData.soundEnabled : true);
 
-            // 2. Monitoramento de Sugestões (Dentro do unsubUser para garantir isNiklaus)
-            let qs;
-            if (isNiklaus) {
-                // Admin vê tudo
-                qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-            } else {
-                // Usuário vê só as dele
-                qs = query(collection(db, "suggestions"), where("userId", "==", sid));
-            }
+            // 2. Monitoramento de Sugestões
+            let qs = isNiklaus 
+                ? query(collection(db, "suggestions"), orderBy("createdAt", "desc"))
+                : query(collection(db, "suggestions"), where("userId", "==", sid));
 
             const unsubSugg = onSnapshot(qs, (snap) => {
                 const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
-                // IMPORTANTE: Atualiza o estado que o seu HTML usa (verifique o nome correto)
                 setAdminSuggestions(list); 
                 setUserSuggestions(list); 
-                
-                // Se o seu HTML usa uma variável chamada 'suggestions', adicione a linha abaixo:
-                // setSuggestions(list); 
+                if (typeof setSuggestions === 'function') setSuggestions(list); 
 
                 // Lógica de Notificações
                 if (isNiklaus) {
@@ -372,7 +364,6 @@ const startDataSync = (sid) => {
                 }
             });
 
-            // Guardar para limpeza
             window.activeUnsubSugg = unsubSugg;
         } else {
             handleLogout();
@@ -384,30 +375,19 @@ const startDataSync = (sid) => {
     const unsubTx = onSnapshot(q, (s) => {
         const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
         setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-        setLoading(false); // Só tira o loading aqui
-    });
-
-    return () => { 
-        unsubUser(); 
-        unsubTx(); 
-        if (window.activeUnsubSugg) window.activeUnsubSugg(); 
-    };
-};
-    // 2. Monitoramento das transações
-    const q = query(collection(db, "transactions"), where("userId", "==", sid));
-    const unsubTx = onSnapshot(q, (s) => {
-        const docs = s.docs.map(d => ({id: d.id, ...d.data()}));
-        setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+        setLoading(false); 
+    }, (error) => {
+        console.error("Erro nas transações:", error);
         setLoading(false);
     });
 
-// ... restante do código anterior
+    // ESTE É O ÚNICO RETURN QUE DEVE EXISTIR NO FINAL DA FUNÇÃO
     return () => { 
         unsubUser(); 
         unsubTx(); 
         if (window.activeUnsubSugg) window.activeUnsubSugg(); 
     };
-}; // <--- CERTIFIQUE-SE DE QUE ESTA CHAVE EXISTE PARA FECHAR A FUNÇÃO
+};// <--- CERTIFIQUE-SE DE QUE ESTA CHAVE EXISTE PARA FECHAR A FUNÇÃO
 
             /**
              * Lógica de Autenticação (Login, Cadastro, Recuperação)
