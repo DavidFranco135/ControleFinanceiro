@@ -192,6 +192,33 @@ app.post("/mensagem-para-usuario", async (req, res) => {
 // ROTA TESTE
 // ========================
 app.get("/", (req, res) => res.send("Servidor do Niklaus está Online! 🚀"));
+app.get("/usuarios-com-status", async (req, res) => {
+  try {
+    const snapshot = await db.collection("users").get();
+    const usuarios = [];
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      // Verifica se já tem mensagens do admin
+      const msgsSnapshot = await db.collection("mensagens")
+        .where("para", "==", doc.id)
+        .where("de", "==", "admin")
+        .get();
+
+      usuarios.push({
+        id: doc.id,
+        email: data.email,
+        nome: data.nome || "",
+        jaRecebeuMensagem: !msgsSnapshot.empty
+      });
+    }
+
+    res.json(usuarios);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ erro: "Erro ao listar usuários" });
+  }
+});
 
 // ========================
 // INICIA SERVIDOR
