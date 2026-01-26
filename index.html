@@ -1585,7 +1585,7 @@ const handleAppShare = async () => {
         <h3 className="text-lg font-black text-white text-center uppercase tracking-widest">Ajustes e Perfil</h3>
         
         <div className="space-y-6">
-           
+            
             <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                 <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                     <div className="relative cursor-pointer group" onClick=${() => fileInputPrincipalRef.current.click()}>
@@ -1604,9 +1604,26 @@ const handleAppShare = async () => {
                     <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
                     <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-violet-500 transition-all" value=${profileName} onInput=${e => setProfileName(e.target.value)} />
                 </div>
+                
+                <button
+                    onClick=${async () => {
+                        try {
+                            await setDoc(doc(db, "users", user.id), { 
+                                appName: profileName, 
+                                photoURL: profilePhoto,
+                                updatedAt: serverTimestamp()
+                            }, { merge: true });
+                            alert("Alterações da Conta Principal salvas!");
+                        } catch (err) {
+                            alert("Erro ao sincronizar.");
+                        }
+                    }}
+                    className="w-full py-4 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                >
+                    Sincronizar Alterações
+                </button>
             </div>
 
-            
             <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 space-y-6 shadow-xl">
                 <div className="flex items-center gap-5 border-b border-slate-800/50 pb-6">
                     <div className="relative cursor-pointer group" onClick=${() => fileInputSecondaryRef.current.click()}>
@@ -1625,9 +1642,26 @@ const handleAppShare = async () => {
                     <label className="text-[9px] font-black text-slate-500 uppercase ml-1 tracking-widest">Nome Exibido</label>
                     <input type="text" className="w-full p-4 bg-slate-800 border-0 rounded-2xl text-xs font-bold ring-1 ring-slate-700 outline-none focus:ring-emerald-500 transition-all" value=${secondaryName} onInput=${e => setSecondaryName(e.target.value)} />
                 </div>
+
+                <button
+                    onClick=${async () => {
+                        try {
+                            await setDoc(doc(db, "users", user.id), { 
+                                secondaryName: secondaryName, 
+                                secondaryPhotoURL: secondaryPhoto,
+                                updatedAt: serverTimestamp()
+                            }, { merge: true });
+                            alert("Alterações da Conta Secundária salvas!");
+                        } catch (err) {
+                            alert("Erro ao sincronizar.");
+                        }
+                    }}
+                    className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                >
+                    Sincronizar Alterações
+                </button>
             </div>
 
-           
             <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-8 rounded-[2.5rem] shadow-2xl text-white relative overflow-hidden group">
                 <div className="relative z-10">
                     <div className="flex items-center gap-4 mb-4">
@@ -1652,7 +1686,6 @@ const handleAppShare = async () => {
                 <i className="fas fa-share-alt absolute -right-4 -bottom-4 text-8xl opacity-10 rotate-12 transition-transform duration-500 group-hover:rotate-0"></i>
             </div>
 
-            
             <div id="sugestoes-section" className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1664,7 +1697,6 @@ const handleAppShare = async () => {
                 </div>
 
                 ${user.email === 'davidbhmg147@gmail.com' ? html`
-                    
                     <div className="flex bg-slate-950 p-1 rounded-xl gap-1">
                         <button onClick=${() => setAdminTab('inbox')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'inbox' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Sugestões</button>
                         <button onClick=${() => setAdminTab('direct')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'direct' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Enviar Direto</button>
@@ -1753,42 +1785,7 @@ const handleAppShare = async () => {
                 `}
             </div>
 
-            
             <div className="pt-4 space-y-4">
- <button
-  onClick=${async () => {
-    try {
-      console.log("Iniciando salvamento para ID:", user.id);
-
-      await setDoc(
-        doc(db, "users", user.id),
-        { 
-          appName: profileName, 
-          secondaryName: secondaryName, 
-          photoURL: profilePhoto,
-          secondaryPhotoURL: secondaryPhoto,
-          soundEnabled: soundEnabled,
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
-      );
-
-      alert("As configurações foram salvas com sucesso!");
-      // ❌ NÃO recarrega a página
-      // window.location.reload();  <-- REMOVIDO
-
-    } catch (err) {
-      console.error("Erro detalhado ao salvar:", err);
-      alert("Erro ao sincronizar dados com o servidor.");
-    }
-  }}
-  className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all"
->
-  Sincronizar Alterações
-</button>
-
-
-
                 <button onClick=${handleClearFinancialData} className="w-full py-5 bg-rose-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-rose-600/30 active:scale-95 hover:bg-rose-500 transition-all">
                     <i className="fas fa-eraser mr-2"></i> Limpar Dados Financeiros
                 </button>
