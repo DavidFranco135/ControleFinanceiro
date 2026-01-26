@@ -244,79 +244,91 @@
          * Componente Principal da Aplicação
          */
         const App = () => {
-    // Estados Principais de Usuário e UI
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('dashboard');
-    const [transactions, setTransactions] = useState([]);
-    const [showModal, setShowModal] = useState(false);
-    const [editingId, setEditingId] = useState(null);
-    
-    // Estados do Painel Admin (ADICIONADOS PARA CORREÇÃO)
-    const [adminTab, setAdminTab] = useState('inbox'); 
-    const [allUsers, setAllUsers] = useState([]); 
-    const [allMessagesHistory, setAllMessagesHistory] = useState([]);
+  // Estados Principais
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [transactions, setTransactions] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-    // Filtros de Visualização
-    const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
-    const [typeFilter, setTypeFilter] = useState('ALL');
-    const [methodFilter, setMethodFilter] = useState('ALL');
-    const [showValues, setShowValues] = useState(true);
-    const [soundEnabled, setSoundEnabled] = useState(true);
-    const [aiTip, setAiTip] = useState('');
+  // Admin
+  const [adminTab, setAdminTab] = useState('inbox'); 
+  const [allUsers, setAllUsers] = useState([]); 
+  const [allMessagesHistory, setAllMessagesHistory] = useState([]);
 
-    // Modos de Balanço
-    const [balanceMode, setBalanceMode] = useState('MONTHLY');
-    const [accumStart, setAccumStart] = useState('');
-    const [accumEnd, setAccumEnd] = useState('');
-    const [showCustomPeriod, setShowCustomPeriod] = useState(false);
+  // Filtros
+  const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const [methodFilter, setMethodFilter] = useState('ALL');
+  const [showValues, setShowValues] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
-    // Estados da IA
-    const [aiAdvice, setAiAdvice] = useState('');
-    const [aiLoading, setAiLoading] = useState(false);
-    const [showAiModal, setShowAiModal] = useState(false);
+  // IA (Dicas automáticas)
+  const [aiTip, setAiTip] = useState('');
 
-    // Referências de UI
-    const fileInputPrincipalRef = useRef(null);
-    const fileInputSecondaryRef = useRef(null);
-    const notificationDropdownRef = useRef(null);
-    const doughnutChartRef = useRef(null);
-    const barChartRef = useRef(null);
+  // Balanço
+  const [balanceMode, setBalanceMode] = useState('MONTHLY');
+  const [accumStart, setAccumStart] = useState('');
+  const [accumEnd, setAccumEnd] = useState('');
+  const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
-    // Estado para nova transação
-    const [newTx, setNewTx] = useState({ 
-        description: '', amount: '', type: 'INCOME', 
-        date: new Date().toISOString().split('T')[0],
-        method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
-    });
+  // IA Modal
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
 
-    // Estados de Autenticação
-    const [email, setEmail] = useState('');
-    const [pass, setPass] = useState('');
-    const [showPass, setShowPass] = useState(false);
-    const [isRegistering, setIsRegistering] = useState(false);
-    const [isRecovering, setIsRecovering] = useState(false);
-    const [authLoading, setAuthLoading] = useState(false);
-    const [keepConnected, setKeepConnected] = useState(true);
+  // Refs de UI
+  const fileInputPrincipalRef = useRef(null);
+  const fileInputSecondaryRef = useRef(null);
+  const notificationDropdownRef = useRef(null);
 
-    // Perfil das Contas
-    const [profileName, setProfileName] = useState('');
-    const [secondaryName, setSecondaryName] = useState('');
-    const [profilePhoto, setProfilePhoto] = useState('');
-    const [secondaryPhoto, setSecondaryPhoto] = useState('');
+  // Refs dos gráficos (🔥 ESSENCIAIS)
+  const lineSaldoRef = useRef(null);
+  const lineFlowRef = useRef(null);
+  const channelBarRef = useRef(null);
+  const doughnutRef = useRef(null);
 
-    // Controle de visualização de conta secundária no extrato
-    const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+  // Nova transação
+  const [newTx, setNewTx] = useState({ 
+    description: '', amount: '', type: 'INCOME', 
+    date: new Date().toISOString().split('T')[0],
+    method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+  });
 
-    // Sugestões e Notificações
-    const [suggestionText, setSuggestionText] = useState('');
-    const [sendingSuggestion, setSendingSuggestion] = useState(false);
-    const [userSuggestions, setUserSuggestions] = useState([]);
-    const [adminSuggestions, setAdminSuggestions] = useState([]);
-    const [unreadCount, setUnreadCount] = useState(0);
-    const [showNotificationList, setShowNotificationList] = useState(false);
+  // Auth
+  const [email, setEmail] = useState('');
+  const [pass, setPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [keepConnected, setKeepConnected] = useState(true);
 
-    const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
+  // Perfil
+  const [profileName, setProfileName] = useState('');
+  const [secondaryName, setSecondaryName] = useState('');
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [secondaryPhoto, setSecondaryPhoto] = useState('');
+
+  // Secundária
+  const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+
+  // Sugestões
+  const [suggestionText, setSuggestionText] = useState('');
+  const [sendingSuggestion, setSendingSuggestion] = useState(false);
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [adminSuggestions, setAdminSuggestions] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotificationList, setShowNotificationList] = useState(false);
+
+  const isAdmin = useMemo(
+    () => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com',
+    [user]
+  );
+
+  // 🔹 O RESTO DO SEU CÓDIGO CONTINUA IGUAL ABAIXO
+
 
     // Funções de feedback sonoro
     const playMoneySfx = () => {
