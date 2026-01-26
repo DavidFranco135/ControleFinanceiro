@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -244,91 +245,78 @@
          * Componente Principal da Aplicação
          */
         const App = () => {
-  // Estados Principais
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [transactions, setTransactions] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+    // Estados Principais de Usuário e UI
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [transactions, setTransactions] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    
+    // Estados do Painel Admin (ADICIONADOS PARA CORREÇÃO)
+    const [adminTab, setAdminTab] = useState('inbox'); 
+    const [allUsers, setAllUsers] = useState([]); 
+    const [allMessagesHistory, setAllMessagesHistory] = useState([]);
 
-  // Admin
-  const [adminTab, setAdminTab] = useState('inbox'); 
-  const [allUsers, setAllUsers] = useState([]); 
-  const [allMessagesHistory, setAllMessagesHistory] = useState([]);
+    // Filtros de Visualização
+    const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+    const [typeFilter, setTypeFilter] = useState('ALL');
+    const [methodFilter, setMethodFilter] = useState('ALL');
+    const [showValues, setShowValues] = useState(true);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    
+    // Modos de Balanço
+    const [balanceMode, setBalanceMode] = useState('MONTHLY');
+    const [accumStart, setAccumStart] = useState('');
+    const [accumEnd, setAccumEnd] = useState('');
+    const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
-  // Filtros
-  const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
-  const [typeFilter, setTypeFilter] = useState('ALL');
-  const [methodFilter, setMethodFilter] = useState('ALL');
-  const [showValues, setShowValues] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(true);
+    // Estados da IA
+    const [aiAdvice, setAiAdvice] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [showAiModal, setShowAiModal] = useState(false);
 
-  // IA (Dicas automáticas)
-  const [aiTip, setAiTip] = useState('');
+    // Referências de UI
+    const fileInputPrincipalRef = useRef(null);
+    const fileInputSecondaryRef = useRef(null);
+    const notificationDropdownRef = useRef(null);
+    const doughnutChartRef = useRef(null);
+    const barChartRef = useRef(null);
 
-  // Balanço
-  const [balanceMode, setBalanceMode] = useState('MONTHLY');
-  const [accumStart, setAccumStart] = useState('');
-  const [accumEnd, setAccumEnd] = useState('');
-  const [showCustomPeriod, setShowCustomPeriod] = useState(false);
+    // Estado para nova transação
+    const [newTx, setNewTx] = useState({ 
+        description: '', amount: '', type: 'INCOME', 
+        date: new Date().toISOString().split('T')[0],
+        method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+    });
 
-  // IA Modal
-  const [aiAdvice, setAiAdvice] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
+    // Estados de Autenticação
+    const [email, setEmail] = useState('');
+    const [pass, setPass] = useState('');
+    const [showPass, setShowPass] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [keepConnected, setKeepConnected] = useState(true);
 
-  // Refs de UI
-  const fileInputPrincipalRef = useRef(null);
-  const fileInputSecondaryRef = useRef(null);
-  const notificationDropdownRef = useRef(null);
+    // Perfil das Contas
+    const [profileName, setProfileName] = useState('');
+    const [secondaryName, setSecondaryName] = useState('');
+    const [profilePhoto, setProfilePhoto] = useState('');
+    const [secondaryPhoto, setSecondaryPhoto] = useState('');
 
-  // Refs dos gráficos (🔥 ESSENCIAIS)
-  const lineSaldoRef = useRef(null);
-  const lineFlowRef = useRef(null);
-  const channelBarRef = useRef(null);
-  const doughnutRef = useRef(null);
+    // Controle de visualização de conta secundária no extrato
+    const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
 
-  // Nova transação
-  const [newTx, setNewTx] = useState({ 
-    description: '', amount: '', type: 'INCOME', 
-    date: new Date().toISOString().split('T')[0],
-    method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
-  });
+    // Sugestões e Notificações
+    const [suggestionText, setSuggestionText] = useState('');
+    const [sendingSuggestion, setSendingSuggestion] = useState(false);
+    const [userSuggestions, setUserSuggestions] = useState([]);
+    const [adminSuggestions, setAdminSuggestions] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotificationList, setShowNotificationList] = useState(false);
 
-  // Auth
-  const [email, setEmail] = useState('');
-  const [pass, setPass] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [isRecovering, setIsRecovering] = useState(false);
-  const [authLoading, setAuthLoading] = useState(false);
-  const [keepConnected, setKeepConnected] = useState(true);
-
-  // Perfil
-  const [profileName, setProfileName] = useState('');
-  const [secondaryName, setSecondaryName] = useState('');
-  const [profilePhoto, setProfilePhoto] = useState('');
-  const [secondaryPhoto, setSecondaryPhoto] = useState('');
-
-  // Secundária
-  const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
-
-  // Sugestões
-  const [suggestionText, setSuggestionText] = useState('');
-  const [sendingSuggestion, setSendingSuggestion] = useState(false);
-  const [userSuggestions, setUserSuggestions] = useState([]);
-  const [adminSuggestions, setAdminSuggestions] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [showNotificationList, setShowNotificationList] = useState(false);
-
-  const isAdmin = useMemo(
-    () => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com',
-    [user]
-  );
-
-  // 🔹 O RESTO DO SEU CÓDIGO CONTINUA IGUAL ABAIXO
-
+    const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
 
     // Funções de feedback sonoro
     const playMoneySfx = () => {
@@ -1010,233 +998,81 @@ const handleAppShare = async () => {
             };
 
             // Efeito para renderizar gráficos
-           
-useEffect(() => {
-  iuseEffect(() => {
+            useEffect(() => {
+ useEffect(() => {
   if (activeTab !== 'analytics') return;
 
-  // ===== BASE =====
-  const months = {};
-  const channelTotals = { PIX:0, CREDITO:0, DEBITO:0, DINHEIRO:0 };
+  const channelTotals = { PIX: 0, CREDITO: 0, DEBITO: 0, DINHEIRO: 0 };
+  const monthly = {};
 
   currentTransactions.forEach(t => {
-    const m = t.date?.slice(0,7);
-    if (!months[m]) months[m] = { inc:0, exp:0 };
+    const m = t.date?.slice(0,7); // YYYY-MM
+    if (!monthly[m]) monthly[m] = { inc:0, exp:0 };
 
-    if (t.type === 'INCOME') months[m].inc += t.amountNum || 0;
-    else months[m].exp += t.amountNum || 0;
+    const val = t.amountNum || 0;
 
-    channelTotals[t.method] += t.amountNum || 0;
-  });
-
-  const labelsMonths = Object.keys(months).sort();
-  const incSeries = labelsMonths.map(m => months[m].inc);
-  const expSeries = labelsMonths.map(m => months[m].exp);
-  const saldoSeries = labelsMonths.map(m => months[m].inc - months[m].exp);
-
-  // ===== DOUGHNUT =====
-  const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
-  if (ctxDoughnut) {
-    if (doughnutChartRef.current) doughnutChartRef.current.destroy();
-    doughnutChartRef.current = new Chart(ctxDoughnut, {
-      type:'doughnut',
-      data:{ labels:['Entradas','Saídas'], datasets:[{ data:[totals.inc, totals.exp], backgroundColor:['#10b981','#f43f5e'], borderWidth:0 }]},
-      options:{ cutout:'70%', plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ===== BAR QTD POR CANAL =====
-  const ctxBar = document.getElementById('analyticsBarChart');
-  if (ctxBar) {
-    if (barChartRef.current) barChartRef.current.destroy();
-
-    const methods = ['PIX','CREDITO','DEBITO','DINHEIRO'];
-    const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type==='INCOME' && t.method===m).length);
-    const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type==='EXPENSE' && t.method===m).length);
-
-    barChartRef.current = new Chart(ctxBar,{
-      type:'bar',
-      data:{ labels:['Pix','Crédito','Débito','Dinheiro'], datasets:[
-        { label:'Entradas', data:incomeCounts, backgroundColor:'#10b981' },
-        { label:'Saídas', data:expenseCounts, backgroundColor:'#f43f5e' }
-      ]},
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ===== LINE SALDO =====
-  const ctxSaldo = document.getElementById('analyticsLineSaldo');
-  if (ctxSaldo) {
-    if (lineSaldoRef.current) lineSaldoRef.current.destroy();
-    lineSaldoRef.current = new Chart(ctxSaldo,{
-      type:'line',
-      data:{ labels: labelsMonths, datasets:[{ label:'Saldo Mensal', data: saldoSeries, borderColor:'#8b5cf6', backgroundColor:'#8b5cf633', fill:true, tension:.4 }]},
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ===== LINE FLOW =====
-  const ctxFlow = document.getElementById('analyticsLineFlow');
-  if (ctxFlow) {
-    if (lineFlowRef.current) lineFlowRef.current.destroy();
-    lineFlowRef.current = new Chart(ctxFlow,{
-      type:'line',
-      data:{ labels: labelsMonths, datasets:[
-        { label:'Entradas', data:incSeries, borderColor:'#10b981', tension:.4 },
-        { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
-      ]},
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-  // ===== 📅 FILTRO POR MÊS/ANO =====
-  const filteredMonths = selectedMonth
-    ? labelsMonths.filter(m => m === selectedMonth)
-    : labelsMonths;
-
-  // ===== 📊 COMPARAÇÃO COM MÊS ANTERIOR =====
-  if (filteredMonths.length >= 1) {
-    const current = filteredMonths.at(-1);
-    const prev = labelsMonths[labelsMonths.indexOf(current) - 1];
-
-    if (prev && months[prev] && months[current]) {
-      const incDiff = ((months[current].inc - months[prev].inc) / (months[prev].inc || 1)) * 100;
-      const expDiff = ((months[current].exp - months[prev].exp) / (months[prev].exp || 1)) * 100;
-      setComparison({ inc: incDiff, exp: expDiff });
+    if (t.type === 'INCOME') {
+      monthly[m].inc += val;
+    } else {
+      monthly[m].exp += val;
     }
-  }
 
-  // ===== BAR VALOR POR CANAL =====
-  const ctxCanal = document.getElementById('analyticsChannelBar');
-  if (ctxCanal) {
-    if (channelBarRef.current) channelBarRef.current.destroy();
-    channelBarRef.current = new Chart(ctxCanal,{
-      type:'bar',
-      data:{ labels:['Pix','Crédito','Débito','Dinheiro'], datasets:[{
-        label:'Volume por Canal (R$)',
-        data:[channelTotals.PIX, channelTotals.CREDITO, channelTotals.DEBITO, channelTotals.DINHEIRO],
-        backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
-      }]},
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ===== 🤖 DICA DO NIKLAUS =====
-  let tip = 'Continue acompanhando seus números.';
-
-  if (expSeries.at(-1) > incSeries.at(-1)) {
-    tip = 'Você gastou mais do que ganhou neste período. Tente reduzir despesas.';
-  } else if (channelTotals.CREDITO > channelTotals.PIX + channelTotals.DEBITO) {
-    tip = 'Uso de crédito elevado. Cuidado com parcelamentos e juros.';
-  } else if (incSeries.at(-1) > expSeries.at(-1) * 1.3) {
-    tip = 'Ótimo controle! Sua renda superou bem os gastos.';
-  }
-
-  setAiTip(tip);
-
-}, [activeTab, currentTransactions, totals]);
-
-
-  // ===== BASE =====
-  const months = {};
-  const channelTotals = { PIX:0, CREDITO:0, DEBITO:0, DINHEIRO:0 };
-
-  currentTransactions.forEach(t => {
-    const m = t.date?.slice(0,7);
-    if (!months[m]) months[m] = { inc:0, exp:0 };
-
-    if (t.type === 'INCOME') months[m].inc += t.amountNum || 0;
-    else months[m].exp += t.amountNum || 0;
-
-    channelTotals[t.method] += t.amountNum || 0;
+    if (channelTotals[t.method] !== undefined) {
+      channelTotals[t.method] += val;
+    }
   });
 
-  const labelsMonths = Object.keys(months).sort();
-  const incSeries = labelsMonths.map(m => months[m].inc);
-  const expSeries = labelsMonths.map(m => months[m].exp);
-  const saldoSeries = labelsMonths.map(m => months[m].inc - months[m].exp);
+  const labelsMonths = Object.keys(monthly).sort();
+  let accBalance = 0;
+  const saldoSeries = [];
+  const incSeries = [];
+  const expSeries = [];
 
-  // ===== DOUGHNUT (já existia) =====
-  const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
-  if (ctxDoughnut) {
-    if (doughnutChartRef.current) doughnutChartRef.current.destroy();
-    doughnutChartRef.current = new Chart(ctxDoughnut, {
-      type:'doughnut',
-      data:{
-        labels:['Entradas','Saídas'],
-        datasets:[{
-          data:[totals.inc, totals.exp],
-          backgroundColor:['#10b981','#f43f5e'],
-          borderWidth:0
-        }]
-      },
-      options:{
-        cutout:'70%',
-        plugins:{ legend:{ labels:{ color:'#94a3b8' }}}
-      }
-    });
-  }
+  labelsMonths.forEach(m => {
+    accBalance += monthly[m].inc - monthly[m].exp;
+    saldoSeries.push(accBalance);
+    incSeries.push(monthly[m].inc);
+    expSeries.push(monthly[m].exp);
+  });
 
-  // ===== BAR (Qtd por Canal – já existia) =====
-  const ctxBar = document.getElementById('analyticsBarChart');
-  if (ctxBar) {
-    if (barChartRef.current) barChartRef.current.destroy();
-
-    const methods = ['PIX','CREDITO','DEBITO','DINHEIRO'];
-    const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type==='INCOME' && t.method===m).length);
-    const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type==='EXPENSE' && t.method===m).length);
-
-    barChartRef.current = new Chart(ctxBar,{
-      type:'bar',
-      data:{
-        labels:['Pix','Crédito','Débito','Dinheiro'],
-        datasets:[
-          { label:'Entradas', data:incomeCounts, backgroundColor:'#10b981' },
-          { label:'Saídas', data:expenseCounts, backgroundColor:'#f43f5e' }
-        ]
-      },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ===== LINE SALDO MENSAL =====
+  // ===== SALDO =====
   const ctxSaldo = document.getElementById('analyticsLineSaldo');
   if (ctxSaldo) {
     if (lineSaldoRef.current) lineSaldoRef.current.destroy();
-    lineSaldoRef.current = new Chart(ctxSaldo,{
-      type:'line',
-      data:{
+    lineSaldoRef.current = new Chart(ctxSaldo, {
+      type: 'line',
+      data: {
         labels: labelsMonths,
-        datasets:[{
-          label:'Saldo Mensal',
+        datasets: [{
+          label: 'Saldo Mensal',
           data: saldoSeries,
-          borderColor:'#8b5cf6',
-          backgroundColor:'#8b5cf633',
-          fill:true,
-          tension:.4
+          tension: 0.4,
+          fill: true,
+          borderWidth: 2
         }]
       },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+      options: { responsive:true }
     });
   }
 
-  // ===== LINE ENTRADAS x SAÍDAS =====
+  // ===== FLOW =====
   const ctxFlow = document.getElementById('analyticsLineFlow');
   if (ctxFlow) {
     if (lineFlowRef.current) lineFlowRef.current.destroy();
-    lineFlowRef.current = new Chart(ctxFlow,{
+    lineFlowRef.current = new Chart(ctxFlow, {
       type:'line',
       data:{
         labels: labelsMonths,
         datasets:[
-          { label:'Entradas', data:incSeries, borderColor:'#10b981', tension:.4 },
-          { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
+          { label:'Entradas', data:incSeries, tension:.4 },
+          { label:'Saídas', data:expSeries, tension:.4 }
         ]
       },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+      options:{ responsive:true }
     });
   }
 
-  // ===== BAR VALOR POR CANAL (NOVO) =====
+  // ===== CANAL =====
   const ctxCanal = document.getElementById('analyticsChannelBar');
   if (ctxCanal) {
     if (channelBarRef.current) channelBarRef.current.destroy();
@@ -1251,17 +1087,14 @@ useEffect(() => {
             channelTotals.CREDITO,
             channelTotals.DEBITO,
             channelTotals.DINHEIRO
-          ],
-          backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
+          ]
         }]
       },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+      options:{ responsive:true }
     });
   }
-// DICA DO NIKLAUS let tip = 'Continue acompanhando seus números.'; if (expSeries.at(-1) > incSeries.at(-1)) { tip = 'Você gastou mais do que ganhou neste período.'; } else if (channelTotals.CREDITO > channelTotals.PIX + channelTotals.DEBITO) { tip = 'Uso de crédito elevado. Cuidado com parcelamentos.'; } else if (incSeries.at(-1) > expSeries.at(-1) * 1.3) { tip = 'Ótimo controle! Sua renda superou bem os gastos.'; } setAiTip(tip);
-}, [activeTab, currentTransactions, totals]);
 
-
+}, [activeTab, currentTransactions]);
 
 
 
@@ -1633,93 +1466,118 @@ useEffect(() => {
                         ` : ''}
 
                         ${activeTab === 'transactions' ? html`
+                            <div className="space-y-4 animate-in">
+                                <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-5 shadow-sm">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
+                                            <button onClick=${() => setTypeFilter('ALL')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'ALL' ? 'bg-slate-800 text-violet-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Tudo</button>
+                                            <button onClick=${() => setTypeFilter('INCOME')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/10 shadow-sm' : 'text-slate-500 hover:text-emerald-400'}`}>Entradas</button>
+                                            <button onClick=${() => setTypeFilter('EXPENSE')} className=${`flex-1 px-4 py-3 rounded-xl text-[9px] font-black uppercase transition-all whitespace-nowrap ${typeFilter === 'EXPENSE' ? 'bg-rose-500/10 text-rose-500 border border-rose-500/10 shadow-sm' : 'text-slate-500 hover:text-rose-400'}`}>Saídas</button>
+                                        </div>
+                                        <div className="flex p-1 bg-slate-950 rounded-2xl gap-1 w-full no-scrollbar overflow-x-auto border border-slate-800">
+                                            ${['ALL', 'PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'].map(m => html`
+                                                <button key=${m} onClick=${() => setMethodFilter(m)} className=${`flex-none px-5 py-3 rounded-xl text-[8px] font-black uppercase transition-all whitespace-nowrap ${methodFilter === m ? 'bg-slate-800 text-violet-400 border border-slate-700 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                                                    ${m === 'ALL' ? 'Canais (Todos)' : m}
+                                                </button>
+                                            `)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    ${currentTransactions.length === 0 ? html`<div className="col-span-full py-20 text-center text-slate-500 font-bold uppercase text-xs tracking-[0.2em]">Sem dados para este filtro</div>` : currentTransactions.map(t => html`
+                                        <div key=${t.id} className="bg-slate-900 p-5 rounded-3xl border border-slate-800 flex items-center justify-between gap-4 hover:border-slate-700 transition-all group" onClick=${() => openEdit(t)}>
+                                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                                                <div className=${`w-12 h-12 rounded-2xl flex items-center justify-center text-sm flex-none shadow-sm ${t.type === 'INCOME' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                                    <i className=${t.type === 'INCOME' ? 'fas fa-plus' : 'fas fa-minus'}></i>
+                                                </div>
+                                                <div className="truncate">
+                                                    <p className="text-[12px] font-black text-slate-100 truncate">
+                                                        ${t.description} 
+                                                        ${t.totalInstallments ? html`
+                                                            <span className="text-violet-400/90 ml-1 font-medium">
+                                                                (${t.currentInstallment}/${t.totalInstallments} • R$ ${(t.totalValue || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})})
+                                                            </span>
+                                                        ` : ''}
+                                                    </p>
+                                                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <p className=${`font-black text-xs transition-value whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'} ${showValues ? '' : 'blur-value'}`}>
+                                                         R$ ${(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </p>
+                                                    <p className="text-[8px] font-black uppercase text-slate-600">${t.isPaid ? 'Pago' : 'Pendente'}</p>
+                                                </div>
+                                                <button onClick=${(e) => handleDeleteTransaction(e, t.id)} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10"><i className="fas fa-trash-alt text-xs"></i></button>
+                                            </div>
+                                        </div>
+                                    `)}
+                                </div>
+                            </div>
+                        ` : ''}
 
                         ${activeTab === 'analytics' ? html`
-    <div className="space-y-8 animate-in">
-        <div className="flex justify-between items-center">
-            <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
-        </div>
+                            <div className="space-y-8 animate-in">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
+                                </div>
+                                <div className="grid gap-6">
+  <canvas id="analyticsLineSaldo" height="160"></canvas>
+  <canvas id="analyticsLineFlow" height="160"></canvas>
+  <canvas id="analyticsChannelBar" height="200"></canvas>
+</div>
 
-        <!-- ✅ DICA DO NIKLAUS -->
-        ${aiTip && html`
-            <div className="p-4 bg-violet-500/10 border border-violet-500/20 rounded-2xl text-[11px] font-bold text-violet-300">
-                🤖 Niklaus diz: ${aiTip}
-            </div>
-        `}
-
-        <div className="grid gap-6">
-            <canvas id="analyticsLineSaldo" height="160"></canvas>
-            <canvas id="analyticsLineFlow" height="160"></canvas>
-            <canvas id="analyticsChannelBar" height="200"></canvas>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
-                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">
-                    Distribuição de Valores
-                </h4>
-                <div className="relative w-full max-w-[320px] aspect-square">
-                    <canvas id="analyticsDoughnutChart"></canvas>
-                </div>
-                <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-                    <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
-                        <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}
-                        </p>
-                    </div>
-                    <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
-                        <p className="text-sm font-black text-violet-400">
-                            ${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">
-                    Volume por Canal (R$)
-                </h4>
-                <div className="flex-1 flex items-center min-h-[300px]">
-                    <canvas id="analyticsBarChart"></canvas>
-                </div>
-                <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
-                    Entradas e saídas agrupadas por Pix, Crédito, Débito e Dinheiro.
-                </div>
-            </div>
-        </div>
-
-        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
-            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div className="space-y-1">
-                    <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
-                    <p className="text-xl font-black text-white">${currentTransactions.length}</p>
-                </div>
-                <div className="space-y-1">
-                    <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
-                    <p className="text-xl font-black text-white">
-                        ${currentTransactions.filter(t => t.type === 'INCOME').length}
-                    </p>
-                </div>
-                <div className="space-y-1">
-                    <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
-                    <p className="text-xl font-black text-white">
-                        ${currentTransactions.filter(t => t.type === 'EXPENSE').length}
-                    </p>
-                </div>
-                <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
-                    <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
-                    <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase">
-                        CONSULTAR DICAS <i className="fas fa-magic text-[10px] text-violet-500"></i>
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-` : ''}
-
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
+                                        <div className="relative w-full max-w-[320px] aspect-square">
+                                            <canvas id="analyticsDoughnutChart"></canvas>
+                                        </div>
+                                        <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
+                                                <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
+                                            </div>
+                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
+                                                <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
+                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
+                                        <div className="flex-1 flex items-center min-h-[300px]">
+                                            <canvas id="analyticsBarChart"></canvas>
+                                        </div>
+                                        <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
+                                            Barras superiores indicam entradas, barras tracejadas indicam saídas.
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
+                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
+                                        </div>
+                                        <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
+                                            <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
+                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase"> CONSULTAR  DICAS. <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
 
    ${activeTab === 'settings' ? html`
     <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
