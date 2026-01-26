@@ -1643,7 +1643,7 @@ const handleAppShare = async () => {
                 </div>
 
                 ${user.email === 'davidbhmg147@gmail.com' ? html`
-                    {/* Menu de Abas do Admin */}
+                    
                     <div className="flex bg-slate-950 p-1 rounded-xl gap-1">
                         <button onClick=${() => setAdminTab('inbox')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'inbox' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Sugestões</button>
                         <button onClick=${() => setAdminTab('direct')} className=${`flex-1 py-2 text-[8px] font-black uppercase rounded-lg transition-all ${adminTab === 'direct' ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>Enviar Direto</button>
