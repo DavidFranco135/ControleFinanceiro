@@ -998,26 +998,23 @@ const handleAppShare = async () => {
 
             // Efeito para renderizar gráficos
            
- useEffect(() => {
+useEffect(() => {
   if (activeTab !== 'analytics') return;
 
   const channelTotals = { PIX: 0, CREDITO: 0, DEBITO: 0, DINHEIRO: 0 };
   const monthly = {};
 
   currentTransactions.forEach(t => {
-    const m = t.date?.slice(0,7); // YYYY-MM
+    const m = t.date?.slice(0,7);
+    if (!m) return;
     if (!monthly[m]) monthly[m] = { inc:0, exp:0 };
 
-    const val = t.amountNum || 0;
-
     if (t.type === 'INCOME') {
-      monthly[m].inc += val;
+      monthly[m].inc += t.amountNum || 0;
+      channelTotals[t.method] += t.amountNum || 0;
     } else {
-      monthly[m].exp += val;
-    }
-
-    if (channelTotals[t.method] !== undefined) {
-      channelTotals[t.method] += val;
+      monthly[m].exp += t.amountNum || 0;
+      channelTotals[t.method] += t.amountNum || 0;
     }
   });
 
@@ -1034,7 +1031,7 @@ const handleAppShare = async () => {
     expSeries.push(monthly[m].exp);
   });
 
-  // ===== SALDO =====
+  // SALDO
   const ctxSaldo = document.getElementById('analyticsLineSaldo');
   if (ctxSaldo) {
     if (lineSaldoRef.current) lineSaldoRef.current.destroy();
@@ -1045,16 +1042,18 @@ const handleAppShare = async () => {
         datasets: [{
           label: 'Saldo Mensal',
           data: saldoSeries,
+          borderColor: '#8b5cf6',
+          backgroundColor: '#8b5cf622',
           tension: 0.4,
           fill: true,
-          borderWidth: 2
+          pointRadius: 4
         }]
       },
-      options: { responsive:true }
+      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}} }
     });
   }
 
-  // ===== FLOW =====
+  // ENTRADAS x SAÍDAS
   const ctxFlow = document.getElementById('analyticsLineFlow');
   if (ctxFlow) {
     if (lineFlowRef.current) lineFlowRef.current.destroy();
@@ -1063,15 +1062,15 @@ const handleAppShare = async () => {
       data:{
         labels: labelsMonths,
         datasets:[
-          { label:'Entradas', data:incSeries, tension:.4 },
-          { label:'Saídas', data:expSeries, tension:.4 }
+          { label:'Entradas', data:incSeries, borderColor:'#10b981', tension:.4 },
+          { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
         ]
       },
-      options:{ responsive:true }
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}} }
     });
   }
 
-  // ===== CANAL =====
+  // POR CANAL
   const ctxCanal = document.getElementById('analyticsChannelBar');
   if (ctxCanal) {
     if (channelBarRef.current) channelBarRef.current.destroy();
@@ -1086,14 +1085,28 @@ const handleAppShare = async () => {
             channelTotals.CREDITO,
             channelTotals.DEBITO,
             channelTotals.DINHEIRO
-          ]
+          ],
+          backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
         }]
       },
-      options:{ responsive:true }
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}} }
     });
   }
 
+  // DICA DO NIKLAUS
+  let tip = 'Continue acompanhando seus números.';
+  if (expSeries.at(-1) > incSeries.at(-1)) {
+    tip = 'Você gastou mais do que ganhou neste período.';
+  } else if (channelTotals.CREDITO > channelTotals.PIX + channelTotals.DEBITO) {
+    tip = 'Uso de crédito elevado. Cuidado com parcelamentos.';
+  } else if (incSeries.at(-1) > expSeries.at(-1) * 1.3) {
+    tip = 'Ótimo controle! Sua renda superou bem os gastos.';
+  }
+
+  setAiTip(tip);
+
 }, [activeTab, currentTransactions]);
+
 
 
 
@@ -1517,66 +1530,91 @@ const handleAppShare = async () => {
                         ` : ''}
 
                         ${activeTab === 'analytics' ? html`
-                            <div className="space-y-8 animate-in">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
-                                </div>
-                                <div className="grid gap-6">
-  <canvas id="analyticsLineSaldo" height="160"></canvas>
-  <canvas id="analyticsLineFlow" height="160"></canvas>
-  <canvas id="analyticsChannelBar" height="200"></canvas>
-</div>
+    <div className="space-y-8 animate-in">
+        <div className="flex justify-between items-center">
+            <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
+        </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
-                                        <div className="relative w-full max-w-[320px] aspect-square">
-                                            <canvas id="analyticsDoughnutChart"></canvas>
-                                        </div>
-                                        <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
-                                                <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
-                                            </div>
-                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
-                                                <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
-                                        <div className="flex-1 flex items-center min-h-[300px]">
-                                            <canvas id="analyticsBarChart"></canvas>
-                                        </div>
-                                        <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
-                                            Barras superiores indicam entradas, barras tracejadas indicam saídas.
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
-                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                        <div className="space-y-1">
-                                            <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
-                                            <p className="text-xl font-black text-white">${currentTransactions.length}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
-                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
-                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
-                                        </div>
-                                        <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
-                                            <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
-                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase"> CONSULTAR  DICAS. <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
+        <!-- ✅ DICA DO NIKLAUS -->
+        ${aiTip && html`
+            <div className="p-4 bg-violet-500/10 border border-violet-500/20 rounded-2xl text-[11px] font-bold text-violet-300">
+                🤖 Niklaus diz: ${aiTip}
+            </div>
+        `}
+
+        <div className="grid gap-6">
+            <canvas id="analyticsLineSaldo" height="160"></canvas>
+            <canvas id="analyticsLineFlow" height="160"></canvas>
+            <canvas id="analyticsChannelBar" height="200"></canvas>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">
+                    Distribuição de Valores
+                </h4>
+                <div className="relative w-full max-w-[320px] aspect-square">
+                    <canvas id="analyticsDoughnutChart"></canvas>
+                </div>
+                <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+                    <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
+                        <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}
+                        </p>
+                    </div>
+                    <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                        <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
+                        <p className="text-sm font-black text-violet-400">
+                            ${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">
+                    Volume por Canal (R$)
+                </h4>
+                <div className="flex-1 flex items-center min-h-[300px]">
+                    <canvas id="analyticsBarChart"></canvas>
+                </div>
+                <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
+                    Entradas e saídas agrupadas por Pix, Crédito, Débito e Dinheiro.
+                </div>
+            </div>
+        </div>
+
+        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="space-y-1">
+                    <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
+                    <p className="text-xl font-black text-white">${currentTransactions.length}</p>
+                </div>
+                <div className="space-y-1">
+                    <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
+                    <p className="text-xl font-black text-white">
+                        ${currentTransactions.filter(t => t.type === 'INCOME').length}
+                    </p>
+                </div>
+                <div className="space-y-1">
+                    <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
+                    <p className="text-xl font-black text-white">
+                        ${currentTransactions.filter(t => t.type === 'EXPENSE').length}
+                    </p>
+                </div>
+                <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
+                    <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
+                    <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase">
+                        CONSULTAR DICAS <i className="fas fa-magic text-[10px] text-violet-500"></i>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+` : ''}
+
 
    ${activeTab === 'settings' ? html`
     <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
