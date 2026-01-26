@@ -1627,60 +1627,81 @@ useEffect(() => {
                         ` : ''}
 
                         ${activeTab === 'analytics' ? html`
-                            <div className="space-y-8 animate-in">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
-                                </div>
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
-                                        <div className="relative w-full max-w-[320px] aspect-square">
-                                            <canvas id="analyticsDoughnutChart"></canvas>
-                                        </div>
-                                        <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
-                                                <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
-                                            </div>
-                                            <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
-                                                <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
-                                                <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col">
-                                        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Volume por Canal (Qtd)</h4>
-                                        <div className="flex-1 flex items-center min-h-[300px]">
-                                            <canvas id="analyticsBarChart"></canvas>
-                                        </div>
-                                        <div className="mt-4 text-[9px] text-slate-500 font-bold uppercase tracking-tighter text-center">
-                                            Barras superiores indicam entradas, barras tracejadas indicam saídas.
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
-                                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                        <div className="space-y-1">
-                                            <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
-                                            <p className="text-xl font-black text-white">${currentTransactions.length}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
-                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
-                                            <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
-                                        </div>
-                                        <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
-                                            <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
-                                            <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase"> CONSULTAR  DICAS. <i className="fas fa-magic text-[10px] text-violet-500"></i></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ` : ''}
+<div className="space-y-8 animate-in">
+    <div className="flex justify-between items-center">
+        <h3 className="text-lg font-black text-white uppercase tracking-widest">Painel Gráfico</h3>
+    </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- Distribuição de Valores (Doughnut) -->
+        <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl flex flex-col items-center">
+            <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 w-full">Distribuição de Valores</h4>
+            <div className="relative w-full max-w-[320px] aspect-square">
+                <canvas id="analyticsDoughnutChart"></canvas>
+            </div>
+            <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+                <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Saldo Líquido</p>
+                    <p className=${`text-sm font-black ${totals.bal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>R$ ${totals.bal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</p>
+                </div>
+                <div className="bg-slate-800/30 p-4 rounded-3xl border border-slate-700/50 text-center">
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Eficiência</p>
+                    <p className="text-sm font-black text-violet-400">${Math.round((totals.inc / (totals.inc + totals.exp || 1)) * 100)}%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos Analíticos (Line e Bar) -->
+        <div className="grid gap-6">
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Saldo ao Longo do Tempo (R$)</h4>
+                <canvas id="analyticsLineSaldo" height="160"></canvas>
+            </div>
+
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Fluxo de Entradas e Saídas (R$)</h4>
+                <canvas id="analyticsLineFlow" height="160"></canvas>
+            </div>
+
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Volume por Canal (R$)</h4>
+                <canvas id="analyticsChannelBar" height="160"></canvas>
+            </div>
+
+            <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Quantidade por Método</h4>
+                <canvas id="analyticsBarChart" height="160"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Resumo da Amostragem -->
+    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl">
+        <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">Resumo da Amostragem</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="space-y-1">
+                <span className="text-[9px] font-black text-slate-500 uppercase">Total Transações</span>
+                <p className="text-xl font-black text-white">${currentTransactions.length}</p>
+            </div>
+            <div className="space-y-1">
+                <span className="text-[9px] font-black text-emerald-500 uppercase">Qtd Entradas</span>
+                <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'INCOME').length}</p>
+            </div>
+            <div className="space-y-1">
+                <span className="text-[9px] font-black text-rose-500 uppercase">Qtd Saídas</span>
+                <p className="text-xl font-black text-white">${currentTransactions.filter(t => t.type === 'EXPENSE').length}</p>
+            </div>
+            <div className="space-y-1 cursor-pointer group active:scale-95 transition-all" onClick=${generateAIAdvice}>
+                <span className="text-[9px] font-black text-violet-500 uppercase">Dicas do Niklaus</span>
+                <p className="text-sm font-black text-white flex items-center gap-2 group-hover:text-violet-400 transition-colors uppercase">
+                    CONSULTAR DICAS <i className="fas fa-magic text-[10px] text-violet-500"></i>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+` : ''}
 
    ${activeTab === 'settings' ? html`
     <div className="max-w-md mx-auto space-y-8 animate-in mt-4 mb-10 pb-20">
