@@ -352,68 +352,89 @@
      * Inicia a sincronização de dados em tempo real com o Firestore
      */
     const startDataSync = (sid) => {
-        setLoading(true);
+  setLoading(true);
 
-        let unsubSugg = () => {};
-        let unsubUsersList = () => {}; // Para o dropdown do admin
+  let unsubSugg = () => {};
+  let unsubUsersList = () => {};
 
-        const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-            if (!s.exists()) return handleLogout();
+  // 🔹 Listener do USUÁRIO
+  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+    if (!s.exists()) {
+      handleLogout();
+      return;
+    }
 
-            const userData = { id: s.id, ...s.data() };
-            const adminEmail = "davidbhmg147@gmail.com";
-            const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
+    const userData = { id: s.id, ...s.data() };
+    const adminEmail = "davidbhmg147@gmail.com";
+    const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
 
-            if (!isUserAdmin && userData.status !== 'paid') {
-                alert("Acesso Bloqueado.");
-                handleLogout();
-                return;
-            }
+    // 🔐 Bloqueio de acesso se não estiver pago (exceto admin)
+    if (!isUserAdmin && userData.status !== 'paid') {
+      alert("Acesso bloqueado. Efetue o pagamento.");
+      handleLogout();
+      return;
+    }
 
-            setUser(userData);
-            unsubSugg();
+    // 🔥 SETA O USUÁRIO
+    setUser(userData);
 
-            if (isUserAdmin) {
-                // Listener de todas as sugestões para o Admin
-                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-                unsubSugg = onSnapshot(qs, (snap) => {
-                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setAdminSuggestions(docs);
-                    setAllMessagesHistory(docs); // Alimenta o histórico com tudo
-                });
+    // 🔥 SETA OS DADOS DE PERFIL (ERA ISSO QUE FALTAVA)
+    setProfileName(userData.appName || "");
+    setSecondaryName(userData.secondaryName || "");
+    setProfilePhoto(userData.photoURL || "");
+    setSecondaryPhoto(userData.secondaryPhotoURL || "");
+    setSoundEnabled(userData.soundEnabled ?? true);
 
-                // Listener de todos os usuários para o Dropdown
-                const qu = query(collection(db, "users"));
-                unsubUsersList = onSnapshot(qu, (snap) => {
-                    setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-                });
+    // Limpa listener anterior
+    unsubSugg();
 
-            } else {
-                // Listener apenas das sugestões do usuário comum
-                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-                unsubSugg = onSnapshot(qsUser, (snap) => {
-                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setUserSuggestions(list);
-                    const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-                    setUnreadCount(unread);
-                });
-            }
-        });
+    if (isUserAdmin) {
+      // 📥 Admin vê TODAS as sugestões
+      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+      unsubSugg = onSnapshot(qs, (snap) => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setAdminSuggestions(docs);
+        setAllMessagesHistory(docs);
+      });
 
-        const q = query(collection(db, "transactions"), where("userId", "==", sid));
-        const unsubTx = onSnapshot(q, (s) => {
-            const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-            setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-            setLoading(false);
-        });
+      // 👥 Admin vê TODOS os usuários
+      const qu = query(collection(db, "users"));
+      unsubUsersList = onSnapshot(qu, (snap) => {
+        setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
 
-        return () => {
-            unsubUser();
-            unsubTx();
-            unsubSugg();
-            unsubUsersList();
-        };
-    };
+    } else {
+      // 📩 Usuário vê só as próprias sugestões
+      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+      unsubSugg = onSnapshot(qsUser, (snap) => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setUserSuggestions(list);
+
+        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+        setUnreadCount(unread);
+      });
+    }
+  });
+
+  // 🔹 Listener das TRANSAÇÕES
+  const qTx = query(collection(db, "transactions"), where("userId", "==", sid));
+  const unsubTx = onSnapshot(qTx, (s) => {
+    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    setTransactions(
+      docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+    );
+    setLoading(false);
+  });
+
+  // 🔹 Cleanup
+  return () => {
+    unsubUser();
+    unsubTx();
+    unsubSugg();
+    unsubUsersList();
+  };
+};
+
 
 
             // Efeito para checar persistência de login ao carregar
