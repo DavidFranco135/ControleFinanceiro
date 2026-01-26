@@ -998,103 +998,112 @@ const handleAppShare = async () => {
 
             // Efeito para renderizar gráficos
             useEffect(() => {
-  if (activeTab !== 'analytics') return;
+                if (activeTab === 'analytics') {
+                    const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+                    const ctxBar = document.getElementById('analyticsBarChart');
+                    
+                    if (ctxDoughnut) {
+                        if (doughnutChartRef.current) doughnutChartRef.current.destroy();
+                        
+                        const hasData = totals.inc > 0 || totals.exp > 0;
 
-  // ========== DADOS BASE ==========
-  const monthsMap = {};
-  const channelTotals = { PIX: 0, CREDITO: 0, DEBITO: 0, DINHEIRO: 0 };
-  const monthly = {};
+                        doughnutChartRef.current = new Chart(ctxDoughnut, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Entradas', 'Saídas'],
+                                datasets: [{
+                                    data: hasData ? [totals.inc, totals.exp] : [1, 1],
+                                    backgroundColor: hasData ? ['#10b981', '#f43f5e'] : ['#1e293b', '#1e293b'],
+                                    hoverOffset: 12,
+                                    borderWidth: 0,
+                                    borderRadius: 5
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                cutout: '70%',
+                                plugins: {
+                                    legend: {
+                                        display: hasData,
+                                        position: 'bottom',
+                                        labels: { color: '#94a3b8', font: { weight: 'bold', size: 10 }, padding: 20 }
+                                    }
+                                }
+                            }
+                        });
+                    }
 
-  currentTransactions.forEach(t => {
-    const m = t.date?.slice(0,7); // YYYY-MM
-    if (!monthly[m]) monthly[m] = { inc:0, exp:0, bal:0 };
+                    if (ctxBar) {
+                        if (barChartRef.current) barChartRef.current.destroy();
 
-    if (t.type === 'INCOME') {
-      monthly[m].inc += t.amountNum || 0;
-      channelTotals[t.method] += t.amountNum || 0;
-    } else {
-      monthly[m].exp += t.amountNum || 0;
-      channelTotals[t.method] += t.amountNum || 0;
-    }
-  });
+                        const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+                        const methodLabels = ['PIX', 'Crédito', 'Débito', 'Dinheiro'];
+                        const methodColors = {
+                            'PIX': '#10b981',
+                            'CREDITO': '#8b5cf6',
+                            'DEBITO': '#0ea5e9',
+                            'DINHEIRO': '#f59e0b'
+                        };
 
-  const labelsMonths = Object.keys(monthly).sort();
-  let accBalance = 0;
-  const saldoSeries = [];
-  const incSeries = [];
-  const expSeries = [];
+                        const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).length);
+                        const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).length);
 
-  labelsMonths.forEach(m => {
-    accBalance += monthly[m].inc - monthly[m].exp;
-    saldoSeries.push(accBalance);
-    incSeries.push(monthly[m].inc);
-    expSeries.push(monthly[m].exp);
-  });
-
-  // ====== SALDO MENSAL (LINE) ======
-  const ctxSaldo = document.getElementById('analyticsLineSaldo');
-  if (ctxSaldo) {
-    if (lineSaldoRef.current) lineSaldoRef.current.destroy();
-    lineSaldoRef.current = new Chart(ctxSaldo, {
-      type: 'line',
-      data: {
-        labels: labelsMonths,
-        datasets: [{
-          label: 'Saldo Mensal',
-          data: saldoSeries,
-          borderColor: '#8b5cf6',
-          backgroundColor: '#8b5cf622',
-          tension: 0.4,
-          fill: true,
-          pointRadius: 4
-        }]
-      },
-      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ===== ENTRADAS x SAÍDAS (LINE) =====
-  const ctxFlow = document.getElementById('analyticsLineFlow');
-  if (ctxFlow) {
-    if (lineFlowRef.current) lineFlowRef.current.destroy();
-    lineFlowRef.current = new Chart(ctxFlow, {
-      type:'line',
-      data:{
-        labels: labelsMonths,
-        datasets:[
-          { label:'Entradas', data:incSeries, borderColor:'#10b981', tension:.4 },
-          { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
-        ]
-      },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-  // ====== TOTAL POR CANAL (BAR) ======
-  const ctxCanal = document.getElementById('analyticsChannelBar');
-  if (ctxCanal) {
-    if (channelBarRef.current) channelBarRef.current.destroy();
-    channelBarRef.current = new Chart(ctxCanal,{
-      type:'bar',
-      data:{
-        labels:['Pix','Crédito','Débito','Dinheiro'],
-        datasets:[{
-          label:'Volume por Canal (R$)',
-          data:[
-            channelTotals.PIX,
-            channelTotals.CREDITO,
-            channelTotals.DEBITO,
-            channelTotals.DINHEIRO
-          ],
-          backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
-        }]
-      },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
-    });
-  }
-
-}, [activeTab, currentTransactions]);
-
+                        barChartRef.current = new Chart(ctxBar, {
+                            type: 'bar',
+                            data: {
+                                labels: methodLabels,
+                                datasets: [
+                                    {
+                                        label: 'Qtd Entradas',
+                                        data: incomeCounts,
+                                        backgroundColor: methods.map(m => methodColors[m] + 'CC'),
+                                        borderColor: methods.map(m => methodColors[m]),
+                                        borderWidth: 2,
+                                        borderRadius: 6
+                                    },
+                                    {
+                                        label: 'Qtd Saídas',
+                                        data: expenseCounts,
+                                        backgroundColor: methods.map(m => methodColors[m] + '66'),
+                                        borderColor: methods.map(m => methodColors[m]),
+                                        borderWidth: 1,
+                                        borderRadius: 6,
+                                        borderDash: [5, 5]
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { color: '#64748b', stepSize: 1, font: { size: 10 } },
+                                        grid: { color: '#1e293b' }
+                                    },
+                                    x: {
+                                        ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } },
+                                        grid: { display: false }
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                        labels: { color: '#94a3b8', font: { size: 10 }, usePointStyle: true }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: '#0f172a',
+                                        titleFont: { size: 12 },
+                                        bodyFont: { size: 11 },
+                                        padding: 12,
+                                        cornerRadius: 12
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }, [activeTab, currentTransactions, totals]);
 
             // Tela de Carregamento Inicial
             if (loading) return html`<div className="h-screen flex items-center justify-center bg-slate-950"><div className="loader w-10 h-10 border-4 border-slate-800 rounded-full"></div></div>`;
