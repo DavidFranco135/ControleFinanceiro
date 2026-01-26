@@ -1733,18 +1733,22 @@ const handleAppShare = async () => {
             </div>
 
             <div className="pt-4 space-y-4">
-                <button onClick=${async () => {
-                    try {
-                        await updateDoc(doc(db, "users", user.id), { 
-                            appName: profileName, 
-                            secondaryName: secondaryName, 
-                            photoURL: profilePhoto,
-                            secondaryPhotoURL: secondaryPhoto,
-                            soundEnabled: soundEnabled
-                        });
-                        alert("As configurações foram salvas com sucesso!");
-                    } catch (err) {
-                        alert("Erro ao sincronizar dados com o servidor.");
+               <button onClick=${async () => {
+    console.log("Tentando salvar para o ID:", user.id); // ADICIONE ISSO
+    try {
+        await updateDoc(doc(db, "users", user.id), { 
+            appName: profileName, 
+            secondaryName: secondaryName, 
+            photoURL: profilePhoto,
+            secondaryPhotoURL: secondaryPhoto,
+            soundEnabled: soundEnabled
+        });
+        alert("Salvo!");
+    } catch (err) {
+        console.error("Erro detalhado:", err); // ADICIONE ISSO
+        alert("Erro ao sincronizar.");
+    }
+}}>
                     }
                 }} className="w-full py-5 bg-violet-600 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-violet-600/30 active:scale-95 hover:bg-violet-500 transition-all">Sincronizar Alterações</button>
 
