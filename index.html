@@ -1012,65 +1012,202 @@ const handleAppShare = async () => {
             // Efeito para renderizar gráficos
            
 useEffect(() => {
+  iuseEffect(() => {
   if (activeTab !== 'analytics') return;
 
-  const channelTotals = { PIX: 0, CREDITO: 0, DEBITO: 0, DINHEIRO: 0 };
-  const monthly = {};
+  // ===== BASE =====
+  const months = {};
+  const channelTotals = { PIX:0, CREDITO:0, DEBITO:0, DINHEIRO:0 };
 
   currentTransactions.forEach(t => {
     const m = t.date?.slice(0,7);
-    if (!m) return;
-    if (!monthly[m]) monthly[m] = { inc:0, exp:0 };
+    if (!months[m]) months[m] = { inc:0, exp:0 };
 
-    if (t.type === 'INCOME') {
-      monthly[m].inc += t.amountNum || 0;
-      channelTotals[t.method] += t.amountNum || 0;
-    } else {
-      monthly[m].exp += t.amountNum || 0;
-      channelTotals[t.method] += t.amountNum || 0;
-    }
+    if (t.type === 'INCOME') months[m].inc += t.amountNum || 0;
+    else months[m].exp += t.amountNum || 0;
+
+    channelTotals[t.method] += t.amountNum || 0;
   });
 
-  const labelsMonths = Object.keys(monthly).sort();
-  let accBalance = 0;
-  const saldoSeries = [];
-  const incSeries = [];
-  const expSeries = [];
+  const labelsMonths = Object.keys(months).sort();
+  const incSeries = labelsMonths.map(m => months[m].inc);
+  const expSeries = labelsMonths.map(m => months[m].exp);
+  const saldoSeries = labelsMonths.map(m => months[m].inc - months[m].exp);
 
-  labelsMonths.forEach(m => {
-    accBalance += monthly[m].inc - monthly[m].exp;
-    saldoSeries.push(accBalance);
-    incSeries.push(monthly[m].inc);
-    expSeries.push(monthly[m].exp);
-  });
-
-  // SALDO
-  const ctxSaldo = document.getElementById('analyticsLineSaldo');
-  if (ctxSaldo) {
-    if (lineSaldoRef.current) lineSaldoRef.current.destroy();
-    lineSaldoRef.current = new Chart(ctxSaldo, {
-      type: 'line',
-      data: {
-        labels: labelsMonths,
-        datasets: [{
-          label: 'Saldo Mensal',
-          data: saldoSeries,
-          borderColor: '#8b5cf6',
-          backgroundColor: '#8b5cf622',
-          tension: 0.4,
-          fill: true,
-          pointRadius: 4
-        }]
-      },
-      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}} }
+  // ===== DOUGHNUT =====
+  const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+  if (ctxDoughnut) {
+    if (doughnutChartRef.current) doughnutChartRef.current.destroy();
+    doughnutChartRef.current = new Chart(ctxDoughnut, {
+      type:'doughnut',
+      data:{ labels:['Entradas','Saídas'], datasets:[{ data:[totals.inc, totals.exp], backgroundColor:['#10b981','#f43f5e'], borderWidth:0 }]},
+      options:{ cutout:'70%', plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
 
-  // ENTRADAS x SAÍDAS
+  // ===== BAR QTD POR CANAL =====
+  const ctxBar = document.getElementById('analyticsBarChart');
+  if (ctxBar) {
+    if (barChartRef.current) barChartRef.current.destroy();
+
+    const methods = ['PIX','CREDITO','DEBITO','DINHEIRO'];
+    const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type==='INCOME' && t.method===m).length);
+    const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type==='EXPENSE' && t.method===m).length);
+
+    barChartRef.current = new Chart(ctxBar,{
+      type:'bar',
+      data:{ labels:['Pix','Crédito','Débito','Dinheiro'], datasets:[
+        { label:'Entradas', data:incomeCounts, backgroundColor:'#10b981' },
+        { label:'Saídas', data:expenseCounts, backgroundColor:'#f43f5e' }
+      ]},
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+    });
+  }
+
+  // ===== LINE SALDO =====
+  const ctxSaldo = document.getElementById('analyticsLineSaldo');
+  if (ctxSaldo) {
+    if (lineSaldoRef.current) lineSaldoRef.current.destroy();
+    lineSaldoRef.current = new Chart(ctxSaldo,{
+      type:'line',
+      data:{ labels: labelsMonths, datasets:[{ label:'Saldo Mensal', data: saldoSeries, borderColor:'#8b5cf6', backgroundColor:'#8b5cf633', fill:true, tension:.4 }]},
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+    });
+  }
+
+  // ===== LINE FLOW =====
   const ctxFlow = document.getElementById('analyticsLineFlow');
   if (ctxFlow) {
     if (lineFlowRef.current) lineFlowRef.current.destroy();
-    lineFlowRef.current = new Chart(ctxFlow, {
+    lineFlowRef.current = new Chart(ctxFlow,{
+      type:'line',
+      data:{ labels: labelsMonths, datasets:[
+        { label:'Entradas', data:incSeries, borderColor:'#10b981', tension:.4 },
+        { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
+      ]},
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+    });
+  }
+
+  // ===== BAR VALOR POR CANAL =====
+  const ctxCanal = document.getElementById('analyticsChannelBar');
+  if (ctxCanal) {
+    if (channelBarRef.current) channelBarRef.current.destroy();
+    channelBarRef.current = new Chart(ctxCanal,{
+      type:'bar',
+      data:{ labels:['Pix','Crédito','Débito','Dinheiro'], datasets:[{
+        label:'Volume por Canal (R$)',
+        data:[channelTotals.PIX, channelTotals.CREDITO, channelTotals.DEBITO, channelTotals.DINHEIRO],
+        backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
+      }]},
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+    });
+  }
+
+  // ===== 🤖 DICA DO NIKLAUS =====
+  let tip = 'Continue acompanhando seus números.';
+
+  if (expSeries.at(-1) > incSeries.at(-1)) {
+    tip = 'Você gastou mais do que ganhou neste período. Tente reduzir despesas.';
+  } else if (channelTotals.CREDITO > channelTotals.PIX + channelTotals.DEBITO) {
+    tip = 'Uso de crédito elevado. Cuidado com parcelamentos e juros.';
+  } else if (incSeries.at(-1) > expSeries.at(-1) * 1.3) {
+    tip = 'Ótimo controle! Sua renda superou bem os gastos.';
+  }
+
+  setAiTip(tip);
+
+}, [activeTab, currentTransactions, totals]);
+
+
+  // ===== BASE =====
+  const months = {};
+  const channelTotals = { PIX:0, CREDITO:0, DEBITO:0, DINHEIRO:0 };
+
+  currentTransactions.forEach(t => {
+    const m = t.date?.slice(0,7);
+    if (!months[m]) months[m] = { inc:0, exp:0 };
+
+    if (t.type === 'INCOME') months[m].inc += t.amountNum || 0;
+    else months[m].exp += t.amountNum || 0;
+
+    channelTotals[t.method] += t.amountNum || 0;
+  });
+
+  const labelsMonths = Object.keys(months).sort();
+  const incSeries = labelsMonths.map(m => months[m].inc);
+  const expSeries = labelsMonths.map(m => months[m].exp);
+  const saldoSeries = labelsMonths.map(m => months[m].inc - months[m].exp);
+
+  // ===== DOUGHNUT (já existia) =====
+  const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
+  if (ctxDoughnut) {
+    if (doughnutChartRef.current) doughnutChartRef.current.destroy();
+    doughnutChartRef.current = new Chart(ctxDoughnut, {
+      type:'doughnut',
+      data:{
+        labels:['Entradas','Saídas'],
+        datasets:[{
+          data:[totals.inc, totals.exp],
+          backgroundColor:['#10b981','#f43f5e'],
+          borderWidth:0
+        }]
+      },
+      options:{
+        cutout:'70%',
+        plugins:{ legend:{ labels:{ color:'#94a3b8' }}}
+      }
+    });
+  }
+
+  // ===== BAR (Qtd por Canal – já existia) =====
+  const ctxBar = document.getElementById('analyticsBarChart');
+  if (ctxBar) {
+    if (barChartRef.current) barChartRef.current.destroy();
+
+    const methods = ['PIX','CREDITO','DEBITO','DINHEIRO'];
+    const incomeCounts = methods.map(m => currentTransactions.filter(t => t.type==='INCOME' && t.method===m).length);
+    const expenseCounts = methods.map(m => currentTransactions.filter(t => t.type==='EXPENSE' && t.method===m).length);
+
+    barChartRef.current = new Chart(ctxBar,{
+      type:'bar',
+      data:{
+        labels:['Pix','Crédito','Débito','Dinheiro'],
+        datasets:[
+          { label:'Entradas', data:incomeCounts, backgroundColor:'#10b981' },
+          { label:'Saídas', data:expenseCounts, backgroundColor:'#f43f5e' }
+        ]
+      },
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+    });
+  }
+
+  // ===== LINE SALDO MENSAL =====
+  const ctxSaldo = document.getElementById('analyticsLineSaldo');
+  if (ctxSaldo) {
+    if (lineSaldoRef.current) lineSaldoRef.current.destroy();
+    lineSaldoRef.current = new Chart(ctxSaldo,{
+      type:'line',
+      data:{
+        labels: labelsMonths,
+        datasets:[{
+          label:'Saldo Mensal',
+          data: saldoSeries,
+          borderColor:'#8b5cf6',
+          backgroundColor:'#8b5cf633',
+          fill:true,
+          tension:.4
+        }]
+      },
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
+    });
+  }
+
+  // ===== LINE ENTRADAS x SAÍDAS =====
+  const ctxFlow = document.getElementById('analyticsLineFlow');
+  if (ctxFlow) {
+    if (lineFlowRef.current) lineFlowRef.current.destroy();
+    lineFlowRef.current = new Chart(ctxFlow,{
       type:'line',
       data:{
         labels: labelsMonths,
@@ -1079,11 +1216,11 @@ useEffect(() => {
           { label:'Saídas', data:expSeries, borderColor:'#f43f5e', tension:.4 }
         ]
       },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}} }
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
 
-  // POR CANAL
+  // ===== BAR VALOR POR CANAL (NOVO) =====
   const ctxCanal = document.getElementById('analyticsChannelBar');
   if (ctxCanal) {
     if (channelBarRef.current) channelBarRef.current.destroy();
@@ -1102,23 +1239,12 @@ useEffect(() => {
           backgroundColor:['#10b981','#8b5cf6','#0ea5e9','#f59e0b']
         }]
       },
-      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}} }
+      options:{ responsive:true, plugins:{ legend:{ labels:{ color:'#94a3b8' }}}}
     });
   }
+// DICA DO NIKLAUS let tip = 'Continue acompanhando seus números.'; if (expSeries.at(-1) > incSeries.at(-1)) { tip = 'Você gastou mais do que ganhou neste período.'; } else if (channelTotals.CREDITO > channelTotals.PIX + channelTotals.DEBITO) { tip = 'Uso de crédito elevado. Cuidado com parcelamentos.'; } else if (incSeries.at(-1) > expSeries.at(-1) * 1.3) { tip = 'Ótimo controle! Sua renda superou bem os gastos.'; } setAiTip(tip);
+}, [activeTab, currentTransactions, totals]);
 
-  // DICA DO NIKLAUS
-  let tip = 'Continue acompanhando seus números.';
-  if (expSeries.at(-1) > incSeries.at(-1)) {
-    tip = 'Você gastou mais do que ganhou neste período.';
-  } else if (channelTotals.CREDITO > channelTotals.PIX + channelTotals.DEBITO) {
-    tip = 'Uso de crédito elevado. Cuidado com parcelamentos.';
-  } else if (incSeries.at(-1) > expSeries.at(-1) * 1.3) {
-    tip = 'Ótimo controle! Sua renda superou bem os gastos.';
-  }
-
-  setAiTip(tip);
-
-}, [activeTab, currentTransactions]);
 
 
 
