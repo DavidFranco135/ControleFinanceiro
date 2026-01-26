@@ -281,6 +281,14 @@
     const notificationDropdownRef = useRef(null);
     const doughnutChartRef = useRef(null);
     const barChartRef = useRef(null);
+// No topo do componente
+const doughnutChartRef = useRef(null);
+const barChartRef = useRef(null);
+
+// Novos refs para os gráficos que você adicionou
+const lineSaldoChartRef = useRef(null);
+const lineFlowChartRef = useRef(null);
+const channelBarChartRef = useRef(null);
 
     // Estado para nova transação
     const [newTx, setNewTx] = useState({ 
@@ -1005,7 +1013,7 @@ useEffect(() => {
         const ctxLineFlow = document.getElementById('analyticsLineFlow');
         const ctxChannelBar = document.getElementById('analyticsChannelBar');
 
-        // === Doughnut Chart: Entradas vs Saídas ===
+        // ----------------- Doughnut Chart -----------------
         if (ctxDoughnut) {
             if (doughnutChartRef.current) doughnutChartRef.current.destroy();
 
@@ -1037,7 +1045,7 @@ useEffect(() => {
             });
         }
 
-        // === Bar Chart: Volume por Canal ===
+        // ----------------- Bar Chart -----------------
         if (ctxBar) {
             if (barChartRef.current) barChartRef.current.destroy();
 
@@ -1108,99 +1116,86 @@ useEffect(() => {
             });
         }
 
-        // === Line Chart: Saldo Acumulado ===
+        // ----------------- Line Saldo Chart -----------------
         if (ctxLineSaldo) {
             if (lineSaldoChartRef.current) lineSaldoChartRef.current.destroy();
 
-            const sortedTransactions = [...currentTransactions].sort((a, b) => a.date - b.date);
-            let acc = 0;
-            const saldoData = sortedTransactions.map(t => {
-                acc += t.type === 'INCOME' ? t.amount : -t.amount;
-                return acc;
-            });
-            const labels = sortedTransactions.map(t => new Date(t.date).toLocaleDateString());
+            const saldoData = currentTransactions.reduce((acc, t, i) => {
+                const prev = i === 0 ? 0 : acc[i - 1];
+                return [...acc, prev + (t.type === 'INCOME' ? t.amount : -t.amount)];
+            }, []);
 
             lineSaldoChartRef.current = new Chart(ctxLineSaldo, {
                 type: 'line',
                 data: {
-                    labels,
+                    labels: currentTransactions.map(t => new Date(t.date).toLocaleDateString()),
                     datasets: [{
-                        label: 'Saldo Acumulado',
+                        label: 'Saldo',
                         data: saldoData,
-                        borderColor: '#8b5cf6',
-                        backgroundColor: '#8b5cf6AA',
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16,185,129,0.2)',
                         tension: 0.3,
                         fill: true,
                         pointRadius: 3
                     }]
                 },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: true, labels: { color: '#94a3b8' } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                        y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-                    }
-                }
+                options: { responsive: true, plugins: { legend: { display: false } } }
             });
         }
 
-        // === Line Chart: Fluxo de Entradas e Saídas ===
+        // ----------------- Line Flow Chart -----------------
         if (ctxLineFlow) {
             if (lineFlowChartRef.current) lineFlowChartRef.current.destroy();
 
-            const sorted = [...currentTransactions].sort((a, b) => a.date - b.date);
-            const labelsFlow = sorted.map(t => new Date(t.date).toLocaleDateString());
-            const incomeFlow = sorted.map(t => t.type === 'INCOME' ? t.amount : 0);
-            const expenseFlow = sorted.map(t => t.type === 'EXPENSE' ? t.amount : 0);
+            const flowLabels = currentTransactions.map(t => new Date(t.date).toLocaleDateString());
+            const incomeFlow = currentTransactions.map(t => t.type === 'INCOME' ? t.amount : 0);
+            const expenseFlow = currentTransactions.map(t => t.type === 'EXPENSE' ? t.amount : 0);
 
             lineFlowChartRef.current = new Chart(ctxLineFlow, {
                 type: 'line',
                 data: {
-                    labels: labelsFlow,
+                    labels: flowLabels,
                     datasets: [
-                        { label: 'Entradas', data: incomeFlow, borderColor: '#10b981', backgroundColor: '#10b98144', tension: 0.3, fill: true, pointRadius: 2 },
-                        { label: 'Saídas', data: expenseFlow, borderColor: '#f43f5e', backgroundColor: '#f43f5e44', tension: 0.3, fill: true, pointRadius: 2 }
+                        {
+                            label: 'Entradas',
+                            data: incomeFlow,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16,185,129,0.2)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Saídas',
+                            data: expenseFlow,
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244,63,94,0.2)',
+                            fill: true,
+                            tension: 0.3
+                        }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
-                        y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-                    }
-                }
+                options: { responsive: true, plugins: { legend: { position: 'top' } } }
             });
         }
 
-        // === Bar Chart: Volume por Canal Detalhado ===
+        // ----------------- Channel Bar Chart -----------------
         if (ctxChannelBar) {
             if (channelBarChartRef.current) channelBarChartRef.current.destroy();
 
-            const channels = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
-            const channelLabels = channels.map(c => c.charAt(0) + c.slice(1).toLowerCase());
-            const incomeByChannel = channels.map(c => currentTransactions.filter(t => t.type === 'INCOME' && t.method === c).reduce((a,b) => a + b.amount, 0));
-            const expenseByChannel = channels.map(c => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === c).reduce((a,b) => a + b.amount, 0));
-            const colors = ['#10b981', '#8b5cf6', '#0ea5e9', '#f59e0b'];
+            const methods = ['PIX', 'CREDITO', 'DEBITO', 'DINHEIRO'];
+            const incomeChannel = methods.map(m => currentTransactions.filter(t => t.type === 'INCOME' && t.method === m).reduce((a,b) => a+b.amount,0));
+            const expenseChannel = methods.map(m => currentTransactions.filter(t => t.type === 'EXPENSE' && t.method === m).reduce((a,b) => a+b.amount,0));
 
             channelBarChartRef.current = new Chart(ctxChannelBar, {
                 type: 'bar',
                 data: {
-                    labels: channelLabels,
+                    labels: ['PIX', 'Crédito', 'Débito', 'Dinheiro'],
                     datasets: [
-                        { label: 'Entradas (R$)', data: incomeByChannel, backgroundColor: colors.map(c => c + 'CC'), borderColor: colors, borderWidth: 1 },
-                        { label: 'Saídas (R$)', data: expenseByChannel, backgroundColor: colors.map(c => c + '66'), borderColor: colors, borderWidth: 1 }
+                        { label: 'Entradas (R$)', data: incomeChannel, backgroundColor: '#10b981' },
+                        { label: 'Saídas (R$)', data: expenseChannel, backgroundColor: '#f43f5e' }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { labels: { color: '#94a3b8' } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
-                        y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-                    }
-                }
+                options: { responsive: true, plugins: { legend: { position: 'top' } } }
             });
         }
     }
