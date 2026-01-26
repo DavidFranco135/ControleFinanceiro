@@ -333,8 +333,6 @@
             const startDataSync = (sid) => {
   setLoading(true);
 
-  let unsubSugg = () => {};
-
   const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
     if (!s.exists()) return handleLogout();
 
@@ -349,8 +347,7 @@
 
     setUser(userData);
 
-    // 👉 cancela listener antigo antes de criar outro
-    unsubSugg();
+    let unsubSugg = () => {};
 
     if (isAdmin) {
       const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
@@ -360,28 +357,27 @@
     } else {
       const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
       unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
-        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unread);
+        setUserSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       });
     }
+
+    return () => unsubSugg();
   });
 
   const q = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(q, (s) => {
-    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    setLoading(false);
-  });
+  const unsubTx = onSnapshot(q, () => setLoading(false));
 
-  return () => {
-    unsubUser();
-    unsubTx();
-    unsubSugg();
-  };
+  return () => { unsubUser(); unsubTx(); };
 };
 
+
+
+            // Efeito para checar persistência de login ao carregar
+            useEffect(() => {
+                const sid = localStorage.getItem('belaju_sid') || sessionStorage.getItem('belaju_sid');
+                if (sid) return startDataSync(sid);
+                setLoading(false);
+            }, []);
 
             // Efeito para fechar dropdown de notificações ao clicar fora
             useEffect(() => {
@@ -751,81 +747,48 @@ const generateAIAdvice = async () => {
 
 // Função para o Usuário enviar
 const sendSuggestion = async () => {
-  if (!suggestionText.trim() || !user?.id) return;
+  if (!suggestionText.trim()) return;
 
   setSendingSuggestion(true);
-
   try {
     await addDoc(collection(db, "suggestions"), {
       userId: user.id,
-      userName: profileName || "Usuário",
-      userEmail: user.email || "",
+      userName: user.appName || user.email,
       message: suggestionText.trim(),
-      createdAt: serverTimestamp(),
-
-      // campos usados na comunicação
-      reply: "",
-      repliedAt: null,
-      replyViewed: false
+      createdAt: serverTimestamp()
     });
-
-    setSuggestionText("");
-    alert("Obrigado! Sua mensagem foi enviada com sucesso!");
-  } catch (err) {
-    console.error("Erro ao enviar sugestão:", err);
-    alert("Erro ao enviar a mensagem. Tente novamente.");
-  } finally {
-    setSendingSuggestion(false);   // ✅ FECHADO CORRETAMENTE
+    setSuggestionText('');
+  } catch (e) {
+    alert("Erro ao enviar sugestão");
   }
+  setSendingSuggestion(false);
 };
+
 
 
 // Função exclusiva para o Niklaus responder
-const sendReply = async (sugId, replyText) => {
-  if (user.email !== 'davidbhmg147@gmail.com') return; // Trava de segurança
+const sendReply = async (id, text) => {
+  if (!text.trim()) return;
 
-  try {
-    await updateDoc(doc(db, "suggestions", sugId), {
-      reply: replyText,
-      repliedAt: serverTimestamp(),
-      replyViewed: false
-    });
-    alert("Resposta enviada com sucesso!");
-  } catch (e) {
-    console.error("Erro ao responder:", e);
-  }
+  await updateDoc(doc(db, "suggestions", id), {
+    reply: text.trim(),
+    repliedAt: serverTimestamp(),
+    replyViewed: false
+  });
+};
+
+
+        alert("Resposta enviada com sucesso!");
+    } catch (e) {
+        console.error("Erro ao responder:", e);
+    }
 };
 
 const markReplyAsViewed = async (sugId) => {
-  try {
-    await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
-  } catch (e) { 
-    console.error(e); 
-  }
+    try {
+        await updateDoc(doc(db, "suggestions", sugId), { replyViewed: true });
+    } catch (e) { console.error(e); }
 };
-
-/**
- * Compartilhamento do app (Web Share API)
- */
-const handleAppShare = async () => {
-  const shareData = {
-    title: 'GestorFinanceiro - Controle Financeiro Premium',
-    text: 'Domine suas finanças com o GestorFinanceiro! Acesse agora pelo link e garanta sua versão Premium com todas as funcionalidades liberadas:',
-    url: window.location.href
-  };
-
-  try {
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
-      alert("Link de convite e informações de acesso copiados para a área de transferência!");
-    }
-  } catch (err) {
-    console.log('Error sharing:', err);
-  }
-};
-
 
             /**
              * Compartilhamento do app (Web Share API)
