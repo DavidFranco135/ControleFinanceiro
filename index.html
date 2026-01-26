@@ -244,144 +244,176 @@
          * Componente Principal da Aplicação
          */
         const App = () => {
-            // Estados Principais de Usuário e UI
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [activeTab, setActiveTab] = useState('dashboard');
-            const [transactions, setTransactions] = useState([]);
-            const [showModal, setShowModal] = useState(false);
-            const [editingId, setEditingId] = useState(null);
-            
-            // Filtros de Visualização
-            const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
-            const [typeFilter, setTypeFilter] = useState('ALL');
-            const [methodFilter, setMethodFilter] = useState('ALL');
-            const [showValues, setShowValues] = useState(true);
-            const [soundEnabled, setSoundEnabled] = useState(true);
-            
-            // Modos de Balanço (Mensal vs Acumulado/Personalizado)
-            const [balanceMode, setBalanceMode] = useState('MONTHLY');
-            const [accumStart, setAccumStart] = useState('');
-            const [accumEnd, setAccumEnd] = useState('');
-            const [showCustomPeriod, setShowCustomPeriod] = useState(false);
+    // Estados Principais de Usuário e UI
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [transactions, setTransactions] = useState([]);
+    const [showModal, setShowModal] = useState(false);
+    const [editingId, setEditingId] = useState(null);
+    
+    // Estados do Painel Admin (ADICIONADOS PARA CORREÇÃO)
+    const [adminTab, setAdminTab] = useState('inbox'); 
+    const [allUsers, setAllUsers] = useState([]); 
+    const [allMessagesHistory, setAllMessagesHistory] = useState([]);
 
-            // Estados da IA
-            const [aiAdvice, setAiAdvice] = useState('');
-            const [aiLoading, setAiLoading] = useState(false);
-            const [showAiModal, setShowAiModal] = useState(false);
+    // Filtros de Visualização
+    const [filterMonth, setFilterMonth] = useState(new Date().toISOString().substring(0, 7));
+    const [typeFilter, setTypeFilter] = useState('ALL');
+    const [methodFilter, setMethodFilter] = useState('ALL');
+    const [showValues, setShowValues] = useState(true);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    
+    // Modos de Balanço
+    const [balanceMode, setBalanceMode] = useState('MONTHLY');
+    const [accumStart, setAccumStart] = useState('');
+    const [accumEnd, setAccumEnd] = useState('');
+    const [showCustomPeriod, setShowCustomPeriod] = useState(false);
 
-            // Referências de UI
-            const fileInputPrincipalRef = useRef(null);
-            const fileInputSecondaryRef = useRef(null);
-            const notificationDropdownRef = useRef(null);
-            const doughnutChartRef = useRef(null);
-            const barChartRef = useRef(null);
+    // Estados da IA
+    const [aiAdvice, setAiAdvice] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [showAiModal, setShowAiModal] = useState(false);
 
-            // Estado para nova transação
-            const [newTx, setNewTx] = useState({ 
-                description: '', amount: '', type: 'INCOME', 
-                date: new Date().toISOString().split('T')[0],
-                method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+    // Referências de UI
+    const fileInputPrincipalRef = useRef(null);
+    const fileInputSecondaryRef = useRef(null);
+    const notificationDropdownRef = useRef(null);
+    const doughnutChartRef = useRef(null);
+    const barChartRef = useRef(null);
+
+    // Estado para nova transação
+    const [newTx, setNewTx] = useState({ 
+        description: '', amount: '', type: 'INCOME', 
+        date: new Date().toISOString().split('T')[0],
+        method: 'PIX', isPaid: true, installments: 1, isSecondary: false 
+    });
+
+    // Estados de Autenticação
+    const [email, setEmail] = useState('');
+    const [pass, setPass] = useState('');
+    const [showPass, setShowPass] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const [authLoading, setAuthLoading] = useState(false);
+    const [keepConnected, setKeepConnected] = useState(true);
+
+    // Perfil das Contas
+    const [profileName, setProfileName] = useState('');
+    const [secondaryName, setSecondaryName] = useState('');
+    const [profilePhoto, setProfilePhoto] = useState('');
+    const [secondaryPhoto, setSecondaryPhoto] = useState('');
+
+    // Controle de visualização de conta secundária no extrato
+    const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+
+    // Sugestões e Notificações
+    const [suggestionText, setSuggestionText] = useState('');
+    const [sendingSuggestion, setSendingSuggestion] = useState(false);
+    const [userSuggestions, setUserSuggestions] = useState([]);
+    const [adminSuggestions, setAdminSuggestions] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showNotificationList, setShowNotificationList] = useState(false);
+
+    const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
+
+    // Funções de feedback sonoro
+    const playMoneySfx = () => {
+        if (soundEnabled) {
+            bellSound.currentTime = 0;
+            bellSound.play().catch(e => console.log('Audio play blocked'));
+        }
+    };
+
+    const playTrashSfx = () => {
+        if (soundEnabled) {
+            trashSound.currentTime = 0;
+            trashSound.play().catch(e => console.log('Audio play blocked'));
+        }
+    };
+
+    // FUNÇÃO PARA ENVIAR MENSAGEM DIRETA (ADMIN)
+    const sendDirectMessage = async (userId, msg) => {
+        try {
+            const response = await fetch('https://SUA-URL-DO-BACKEND.com/enviar-mensagem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, mensagem: msg })
             });
+            if (response.ok) {
+                alert("Mensagem enviada com sucesso!");
+            }
+        } catch (err) {
+            alert("Erro ao conectar com o servidor.");
+        }
+    };
 
-            // Estados de Autenticação
-            const [email, setEmail] = useState('');
-            const [pass, setPass] = useState('');
-            const [showPass, setShowPass] = useState(false);
-            const [isRegistering, setIsRegistering] = useState(false);
-            const [isRecovering, setIsRecovering] = useState(false);
-            const [authLoading, setAuthLoading] = useState(false);
-            const [keepConnected, setKeepConnected] = useState(true);
+    /**
+     * Inicia a sincronização de dados em tempo real com o Firestore
+     */
+    const startDataSync = (sid) => {
+        setLoading(true);
 
-            // Perfil das Contas (Principal e Secundária)
-            const [profileName, setProfileName] = useState('');
-            const [secondaryName, setSecondaryName] = useState('');
-            const [profilePhoto, setProfilePhoto] = useState('');
-            const [secondaryPhoto, setSecondaryPhoto] = useState('');
+        let unsubSugg = () => {};
+        let unsubUsersList = () => {}; // Para o dropdown do admin
 
-            // Controle de visualização de conta secundária no extrato
-            const [viewSecondaryTransactions, setViewSecondaryTransactions] = useState(false);
+        const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
+            if (!s.exists()) return handleLogout();
 
-            // Sugestões e Notificações
-            const [suggestionText, setSuggestionText] = useState('');
-            const [sendingSuggestion, setSendingSuggestion] = useState(false);
-            const [userSuggestions, setUserSuggestions] = useState([]);
-            const [adminSuggestions, setAdminSuggestions] = useState([]);
-            const [unreadCount, setUnreadCount] = useState(0);
-            const [showNotificationList, setShowNotificationList] = useState(false);
+            const userData = { id: s.id, ...s.data() };
+            const adminEmail = "davidbhmg147@gmail.com";
+            const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
 
-            const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'niklaus', [user]);
+            if (!isUserAdmin && userData.status !== 'paid') {
+                alert("Acesso Bloqueado.");
+                handleLogout();
+                return;
+            }
 
-            // Funções de feedback sonoro
-            const playMoneySfx = () => {
-                if (soundEnabled) {
-                    bellSound.currentTime = 0;
-                    bellSound.play().catch(e => console.log('Audio play blocked'));
-                }
-            };
+            setUser(userData);
+            unsubSugg();
 
-            const playTrashSfx = () => {
-                if (soundEnabled) {
-                    trashSound.currentTime = 0;
-                    trashSound.play().catch(e => console.log('Audio play blocked'));
-                }
-            };
+            if (isUserAdmin) {
+                // Listener de todas as sugestões para o Admin
+                const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
+                unsubSugg = onSnapshot(qs, (snap) => {
+                    const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAdminSuggestions(docs);
+                    setAllMessagesHistory(docs); // Alimenta o histórico com tudo
+                });
 
-            /**
-             * Inicia a sincronização de dados em tempo real com o Firestore
-             */
-            const startDataSync = (sid) => {
-  setLoading(true);
+                // Listener de todos os usuários para o Dropdown
+                const qu = query(collection(db, "users"));
+                unsubUsersList = onSnapshot(qu, (snap) => {
+                    setAllUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+                });
 
-  let unsubSugg = () => {};
+            } else {
+                // Listener apenas das sugestões do usuário comum
+                const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
+                unsubSugg = onSnapshot(qsUser, (snap) => {
+                    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setUserSuggestions(list);
+                    const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
+                    setUnreadCount(unread);
+                });
+            }
+        });
 
-  const unsubUser = onSnapshot(doc(db, "users", sid), (s) => {
-    if (!s.exists()) return handleLogout();
+        const q = query(collection(db, "transactions"), where("userId", "==", sid));
+        const unsubTx = onSnapshot(q, (s) => {
+            const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
+            setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+            setLoading(false);
+        });
 
-    const userData = { id: s.id, ...s.data() };
-    const isAdmin = userData.email?.toLowerCase() === "davidbhmg147@gmail.com";
-
-    if (!isAdmin && userData.status !== 'paid') {
-      alert("Acesso Bloqueado.");
-      handleLogout();
-      return;
-    }
-
-    setUser(userData);
-
-    // 👉 cancela listener antigo antes de criar outro
-    unsubSugg();
-
-    if (isAdmin) {
-      const qs = query(collection(db, "suggestions"), orderBy("createdAt", "desc"));
-      unsubSugg = onSnapshot(qs, (snap) => {
-        setAdminSuggestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      });
-    } else {
-      const qsUser = query(collection(db, "suggestions"), where("userId", "==", sid));
-      unsubSugg = onSnapshot(qsUser, (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setUserSuggestions(list);
-        const unread = list.filter(sug => sug.reply && sug.replyViewed === false).length;
-        setUnreadCount(unread);
-      });
-    }
-  });
-
-  const q = query(collection(db, "transactions"), where("userId", "==", sid));
-  const unsubTx = onSnapshot(q, (s) => {
-    const docs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-    setTransactions(docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-    setLoading(false);
-  });
-
-  return () => {
-    unsubUser();
-    unsubTx();
-    unsubSugg();
-  };
-};
-
+        return () => {
+            unsubUser();
+            unsubTx();
+            unsubSugg();
+            unsubUsersList();
+        };
+    };
 
 
             // Efeito para checar persistência de login ao carregar
