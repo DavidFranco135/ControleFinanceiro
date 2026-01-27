@@ -203,6 +203,9 @@
     import ReactDOM from 'react-dom';
     import htm from 'htm';
     import { GoogleGenAI } from "@google/genai";
+    import { Chart, registerables } from 'chart.js';
+    Chart.register(...registerables);
+
 
     const html = htm.bind(React.createElement);
     
@@ -281,6 +284,9 @@
     const notificationDropdownRef = useRef(null);
     const doughnutChartRef = useRef(null);
     const barChartRef = useRef(null);
+    const comparisonChartRef = useRef(null);
+    const channelChartRef = useRef(null);
+
 
     // Estado para nova transação
     const [newTx, setNewTx] = useState({ 
@@ -1001,6 +1007,9 @@ const handleAppShare = async () => {
                 if (activeTab === 'analytics') {
                     const ctxDoughnut = document.getElementById('analyticsDoughnutChart');
                     const ctxBar = document.getElementById('analyticsBarChart');
+                    document.getElementById('filterMonth')?.addEventListener('change', updateCharts);
+                    document.getElementById('filterYear')?.addEventListener('change', updateCharts);
+
                     
                     if (ctxDoughnut) {
                         if (doughnutChartRef.current) doughnutChartRef.current.destroy();
@@ -1163,6 +1172,26 @@ const handleAppShare = async () => {
 
             const currentActiveName = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryName : profileName;
             const currentActivePhoto = (activeTab === 'secondary' || (activeTab === 'transactions' && viewSecondaryTransactions)) ? secondaryPhoto : profilePhoto;
+            function updateCharts() {
+    const month = +document.getElementById('filterMonth').value;
+    const year = +document.getElementById('filterYear').value;
+
+    const filtered = currentTransactions.filter(t => {
+        const date = new Date(t.date);
+        return (!month || date.getMonth() + 1 === month) && (!year || date.getFullYear() === year);
+    });
+
+    renderCharts(filtered);
+}
+
+function generateAIAdvice() {
+    const totalExpenses = currentTransactions.filter(t => t.type === 'EXPENSE').reduce((a,b)=>a+b.amount,0);
+    if(totalExpenses > totals.inc*0.7){
+        alert("⚠️ Cuidado! Você está gastando mais de 70% da sua receita.");
+    } else {
+        alert("✅ Ótimo! Seus gastos estão controlados.");
+    }
+}
 
             return html`
                 <div className="min-h-screen flex flex-col md:flex-row pb-20 md:pb-0">
