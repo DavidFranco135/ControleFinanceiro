@@ -986,57 +986,80 @@ const handleAppShare = async () => {
             }, [currentTransactions]);
 
             // NOVO: Dicas automáticas baseadas no comportamento
-            const automaticTips = useMemo(() => {
-                const tips = [];
-                
-                // Dica 1: Gastos acima da média
-                if (totals.exp > previousMonthTotals.exp * 1.2) {
-                    tips.push({
-                        icon: 'fa-exclamation-triangle',
-                        color: 'text-rose-500',
-                        text: `Seus gastos aumentaram ${Math.round(((totals.exp / previousMonthTotals.exp - 1) * 100))}% em relação ao mês anterior. Revise suas despesas!`
-                    });
-                }
+            // NOVO: Dicas automáticas baseadas no comportamento
+const automaticTips = useMemo(() => {
+    const tips = [];
+    
+    // Dica 1: Gastos acima da média
+    if (previousMonthTotals.exp > 0 && totals.exp > previousMonthTotals.exp * 1.2) {
+        const percentIncrease = Math.round(((totals.exp / previousMonthTotals.exp - 1) * 100));
+        tips.push({
+            icon: 'fa-exclamation-triangle',
+            color: 'text-rose-500',
+            text: `Seus gastos aumentaram ${percentIncrease}% em relação ao mês anterior. Revise suas despesas!`
+        });
+    }
 
-                // Dica 2: Saldo positivo
-                if (totals.bal > 0 && totals.bal > previousMonthTotals.bal) {
-                    tips.push({
-                        icon: 'fa-thumbs-up',
-                        color: 'text-emerald-500',
-                        text: `Parabéns! Seu saldo positivo aumentou em ${Math.round(((totals.bal / (previousMonthTotals.bal || 1)) - 1) * 100)}%. Continue assim!`
-                    });
-                }
+    // Dica 2: Saldo positivo
+    if (totals.bal > 0 && previousMonthTotals.bal > 0 && totals.bal > previousMonthTotals.bal) {
+        const percentIncrease = Math.round(((totals.bal / previousMonthTotals.bal) - 1) * 100);
+        tips.push({
+            icon: 'fa-thumbs-up',
+            color: 'text-emerald-500',
+            text: `Parabéns! Seu saldo positivo aumentou em ${percentIncrease}%. Continue assim!`
+        });
+    }
 
-                // Dica 3: Crédito alto
-                if (channelAnalysis.CREDITO && channelAnalysis.CREDITO.exp > totals.exp * 0.5) {
-                    tips.push({
-                        icon: 'fa-credit-card',
-                        color: 'text-amber-500',
-                        text: `${Math.round((channelAnalysis.CREDITO.exp / totals.exp) * 100)}% dos seus gastos são no crédito. Cuidado com o parcelamento!`
-                    });
-                }
+    // Dica 3: Crédito alto
+    if (channelAnalysis.CREDITO && channelAnalysis.CREDITO.exp > totals.exp * 0.5) {
+        tips.push({
+            icon: 'fa-credit-card',
+            color: 'text-amber-500',
+            text: `${Math.round((channelAnalysis.CREDITO.exp / totals.exp) * 100)}% dos seus gastos são no crédito. Cuidado com o parcelamento!`
+        });
+    }
 
-                // Dica 4: Muitas transações pequenas
-                const smallTransactions = currentTransactions.filter(t => t.type === 'EXPENSE' && t.amount < 50).length;
-                if (smallTransactions > 10) {
-                    tips.push({
-                        icon: 'fa-shopping-cart',
-                        color: 'text-violet-500',
-                        text: `Você fez ${smallTransactions} pequenas compras este mês. Pequenos gastos somam muito no final!`
-                    });
-                }
+    // Dica 4: Muitas transações pequenas
+    const smallTransactions = currentTransactions.filter(t => t.type === 'EXPENSE' && t.amount < 50).length;
+    if (smallTransactions > 10) {
+        tips.push({
+            icon: 'fa-shopping-cart',
+            color: 'text-violet-500',
+            text: `Você fez ${smallTransactions} pequenas compras este mês. Pequenos gastos somam muito no final!`
+        });
+    }
 
-                // Dica padrão se não houver outras
-                if (tips.length === 0) {
-                    tips.push({
-                        icon: 'fa-chart-line',
-                        color: 'text-blue-500',
-                        text: 'Mantenha o controle! Registre todas as transações para ter uma visão completa das suas finanças.'
-                    });
-                }
+    // Dica 5: Economia em relação ao mês anterior
+    if (previousMonthTotals.exp > 0 && totals.exp < previousMonthTotals.exp * 0.9) {
+        const percentDecrease = Math.round(((previousMonthTotals.exp - totals.exp) / previousMonthTotals.exp) * 100);
+        tips.push({
+            icon: 'fa-piggy-bank',
+            color: 'text-emerald-500',
+            text: `Excelente! Você economizou ${percentDecrease}% em gastos comparado ao mês anterior!`
+        });
+    }
 
-                return tips;
-            }, [totals, previousMonthTotals, channelAnalysis, currentTransactions]);
+    // Dica 6: Entradas aumentaram
+    if (previousMonthTotals.inc > 0 && totals.inc > previousMonthTotals.inc * 1.1) {
+        const percentIncrease = Math.round(((totals.inc / previousMonthTotals.inc - 1) * 100));
+        tips.push({
+            icon: 'fa-arrow-trend-up',
+            color: 'text-emerald-500',
+            text: `Suas entradas aumentaram ${percentIncrease}%! Ótimo trabalho!`
+        });
+    }
+
+    // Dica padrão se não houver outras
+    if (tips.length === 0) {
+        tips.push({
+            icon: 'fa-chart-line',
+            color: 'text-blue-500',
+            text: 'Mantenha o controle! Registre todas as transações para ter uma visão completa das suas finanças.'
+        });
+    }
+
+    return tips;
+}, [totals, previousMonthTotals, channelAnalysis, currentTransactions]);
 
             /**
              * Navegada para aba de extrato configurada
