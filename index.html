@@ -315,6 +315,9 @@
     const [adminSuggestions, setAdminSuggestions] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotificationList, setShowNotificationList] = useState(false);
+            // Estados para anexos
+const [attachments, setAttachments] = useState({});
+const [uploadingFile, setUploadingFile] = useState(null);
 
     const isAdmin = useMemo(() => user?.email?.toLowerCase() === 'davidbhmg147@gmail.com', [user]);
 
@@ -368,6 +371,7 @@
     const userData = { id: s.id, ...s.data() };
     const adminEmail = "davidbhmg147@gmail.com";
     const isUserAdmin = userData.email?.toLowerCase() === adminEmail;
+      
 
     // 🔐 Bloqueio de acesso se não estiver pago (exceto admin)
     if (!isUserAdmin && userData.status !== 'paid') {
@@ -598,7 +602,101 @@ const handleAuth = async (e) => {
                     }
                 }
             };
+/**
+ * Função para anexar arquivo a uma transação
+ */
+const handleAttachFile = async (e, transactionId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,.pdf';
+    
+    input.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Verificar tamanho do arquivo (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Arquivo muito grande! Tamanho máximo: 5MB');
+            return;
+        }
+        
+        setUploadingFile(transactionId);
+        
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64Data = reader.result;
+                
+                // Salvar no Firestore
+                await updateDoc(doc(db, "transactions", transactionId), {
+                    attachment: base64Data,
+                    attachmentName: file.name,
+                    attachmentType: file.type,
+                    attachmentSize: file.size,
+                    attachedAt: serverTimestamp()
+                });
+                
+                playMoneySfx();
+                alert('Comprovante anexado com sucesso!');
+            };
+            
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Erro ao anexar arquivo:', err);
+            alert('Erro ao anexar arquivo. Tente novamente.');
+        } finally {
+            setUploadingFile(null);
+        }
+    };
+    
+    input.click();
+};
 
+/**
+ * Função para visualizar anexo
+ */
+const viewAttachment = (e, transaction) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!transaction.attachment) return;
+    
+    // Abrir em nova aba
+    const win = window.open();
+    if (transaction.attachmentType?.startsWith('image/')) {
+        win.document.write(`<img src="${transaction.attachment}" style="max-width:100%; height:auto;" />`);
+    } else {
+        win.location.href = transaction.attachment;
+    }
+};
+
+/**
+ * Função para remover anexo
+ */
+const removeAttachment = async (e, transactionId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm('Deseja remover o comprovante anexado?')) return;
+    
+    try {
+        await updateDoc(doc(db, "transactions", transactionId), {
+            attachment: null,
+            attachmentName: null,
+            attachmentType: null,
+            attachmentSize: null,
+            attachedAt: null
+        });
+        
+        playTrashSfx();
+        alert('Comprovante removido!');
+    } catch (err) {
+        alert('Erro ao remover anexo.');
+    }
+};
             /**
              * Limpa todos os dados financeiros do usuário
              */
@@ -1909,7 +2007,7 @@ const automaticTips = useMemo(() => {
                             </div>
                         ` : ''}
 
-                       ${activeTab === 'transactions' ? html`
+${activeTab === 'transactions' ? html`
     <div className="space-y-4 animate-in">
         <div className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 space-y-5 shadow-sm">
             <div className="flex flex-col gap-4">
@@ -1943,19 +2041,56 @@ const automaticTips = useMemo(() => {
                                     </span>
                                 ` : ''}
                             </p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                                ${new Date(t.date).toLocaleDateString('pt-BR')} • ${t.method}
+                                ${t.attachment ? html`
+                                    <span className="ml-2 text-violet-400">
+                                        <i className="fas fa-paperclip"></i> Anexado
+                                    </span>
+                                ` : ''}
+                            </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
                         <div className="text-right">
                             <p className=${`font-black text-xs transition-value whitespace-nowrap ${t.type === 'INCOME' ? 'text-emerald-500' : 'text-rose-500'} ${showValues ? '' : 'blur-value'}`}>
                                  R$ ${(t.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </p>
                             <p className="text-[8px] font-black uppercase text-slate-600">${t.isPaid ? 'Pago' : 'Pendente'}</p>
                         </div>
-                        <button onClick=${(e) => handleAttachFile(e, t.id)} className="p-2.5 text-slate-700 hover:text-violet-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-violet-500/10">
-                            <i className="fas fa-paperclip text-xs"></i>
-                        </button>
+                        
+                        ${t.attachment ? html`
+                            <div className="flex gap-1">
+                                <button 
+                                    onClick=${(e) => viewAttachment(e, t)} 
+                                    className="p-2.5 text-violet-400 hover:text-violet-300 transition-colors bg-violet-500/10 rounded-xl"
+                                    title="Ver anexo"
+                                >
+                                    <i className="fas fa-eye text-xs"></i>
+                                </button>
+                                <button 
+                                    onClick=${(e) => removeAttachment(e, t.id)} 
+                                    className="p-2.5 text-rose-400 hover:text-rose-300 transition-colors bg-rose-500/10 rounded-xl"
+                                    title="Remover anexo"
+                                >
+                                    <i className="fas fa-times text-xs"></i>
+                                </button>
+                            </div>
+                        ` : html`
+                            <button 
+                                onClick=${(e) => handleAttachFile(e, t.id)} 
+                                className="p-2.5 text-slate-400 hover:text-violet-400 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-violet-500/10"
+                                disabled=${uploadingFile === t.id}
+                                title="Anexar comprovante"
+                            >
+                                ${uploadingFile === t.id ? html`
+                                    <i className="fas fa-spinner fa-spin text-xs"></i>
+                                ` : html`
+                                    <i className="fas fa-paperclip text-xs"></i>
+                                `}
+                            </button>
+                        `}
+                        
                         <button onClick=${(e) => handleDeleteTransaction(e, t.id)} className="p-2.5 text-slate-700 hover:text-rose-500 transition-colors bg-slate-800/50 rounded-xl group-hover:bg-rose-500/10">
                             <i className="fas fa-trash-alt text-xs"></i>
                         </button>
@@ -1965,7 +2100,6 @@ const automaticTips = useMemo(() => {
         </div>
     </div>
 ` : ''}
-
                         ${activeTab === 'analytics' ? html`
                             <div className="space-y-8 animate-in">
                                 <div className="flex justify-between items-center">
